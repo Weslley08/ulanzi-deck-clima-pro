@@ -130,14 +130,15 @@ test('every string marked in the inspector can be translated', () => {
 });
 
 test('settings from an old version or a bad host value fall back to defaults', () => {
-  const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', location: 42, label: null });
-  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', label: '', unit: 'c', screen: 'now' });
+  const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', location: 42 });
+  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', unit: 'c', screen: 'now' });
 });
 
-test('a key saved by 1.0.0 with the forecast screen or a refresh setting still loads', () => {
-  const settings = normalizeSettings({ screen: 'forecast', refresh: '60' });
+test('a key saved by an older version with the settings since removed still loads', () => {
+  const settings = normalizeSettings({ screen: 'forecast', refresh: '60', label: 'Casa' });
   assert.equal(settings.screen, 'now');
   assert.equal(settings.refresh, undefined);
+  assert.equal(settings.label, undefined);
 });
 
 test('only well-formed API keys are accepted', () => {

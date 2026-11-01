@@ -27,13 +27,12 @@
     <form id="property-inspector">
       <div class="uspi-item">
         <label class="uspi-item-label" for="location" data-localize>Location</label>
-        <input class="uspi-item-value" id="location" name="location" type="text" list="suggestions" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Detect from my IP" data-localize="Detect from my IP">
-        <datalist id="suggestions"></datalist>
+        <input class="uspi-item-value" id="location" name="location" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Detect from my IP" data-localize="Detect from my IP">
       </div>
-
-      <div class="uspi-item">
-        <label class="uspi-item-label" for="label" data-localize>Key name</label>
-        <input class="uspi-item-value" id="label" name="label" type="text" maxlength="80" autocomplete="off" placeholder="Optional" data-localize="Optional">
+      <!-- Drawn here instead of with a datalist: Studio shows that popup white on white, and no CSS reaches it. -->
+      <div class="uspi-item field-note hidden" id="suggestionRow">
+        <div class="uspi-item-label empty"></div>
+        <div class="field-note-body" id="suggestions"></div>
       </div>
 
       <div class="uspi-item theme-row">

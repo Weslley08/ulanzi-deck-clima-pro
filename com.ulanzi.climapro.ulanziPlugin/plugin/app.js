@@ -17,8 +17,20 @@ const { Version: VERSION } = JSON.parse(readFileSync(new URL('../manifest.json',
 
 silenceConsole();
 
+// Studio prints a plugin's stderr next to its exit code, the only trace left when there is no socket
+// to log through. Only short messages come here: never settings or URLs, which can hold the API key.
+const report = (message, done) => process.stderr.write(`[Clima Pro] ${message}\n`, done);
+// Without this, writing after Studio closes the pipe would throw, and logFailure would write again.
+process.stderr.on('error', () => {});
+
 const $UD = new HostConnection();
-const hub = new WeatherHub({ fetchCurrent, log: (message) => $UD.logMessage(message, 'warn') });
+const hub = new WeatherHub({
+  fetchCurrent,
+  log: (message) => {
+    report(message);
+    $UD.logMessage(message, 'warn');
+  },
+});
 const keys = new Map();
 
 function keyFor(jsn) {
@@ -37,9 +49,12 @@ function applySettings(jsn) {
   if (known) key?.updateSettings(jsn.param ?? {});
 }
 
-function shutdown() {
+function shutdown(reason, code = 0) {
   for (const key of keys.values()) key.destroy();
-  process.exit(0);
+  const exit = () => process.exit(code);
+  // stderr is asynchronous on Windows pipes, so exiting right away could lose the reason.
+  report(`stopping: ${reason}`, exit);
+  setTimeout(exit, 1000);
 }
 
 let attempts = 0;
@@ -49,8 +64,12 @@ let reconnectTimer = null;
 function reconnect() {
   if (reconnectTimer) return;
   attempts += 1;
-  if (attempts > MAX_ATTEMPTS) shutdown();
+  if (attempts > MAX_ATTEMPTS) {
+    shutdown(`no connection to Studio after ${MAX_ATTEMPTS} attempts`, 1);
+    return;
+  }
   const wait = Math.min(1000 * 2 ** (attempts - 1), MAX_RECONNECT_WAIT_MS);
+  report(`no connection to Studio, retrying in ${wait / 1000} s (${attempts} of ${MAX_ATTEMPTS})`);
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     $UD.reconnect();
@@ -59,6 +78,7 @@ function reconnect() {
 
 $UD.onConnected(async () => {
   attempts = 0;
+  report('connected to Studio');
   $UD.getGlobalSettings();
   // Without an answer the keys would sit on "loading" forever instead of asking for a key.
   setTimeout(() => {
@@ -97,11 +117,18 @@ $UD.onClear((jsn) => {
 });
 
 // The host never relaunches this process, so one bad frame must not take every key down with it.
-const logFailure = (error) => $UD.logMessage(`unexpected failure: ${error?.name}: ${error?.message}`, 'error');
+const logFailure = (error) => {
+  const message = `unexpected failure: ${error?.name}: ${error?.message}`;
+  report(message);
+  $UD.logMessage(message, 'error');
+  // During startup nothing may be keeping the process alive, and exiting with 0 would read as success.
+  process.exitCode = 1;
+};
 process.on('uncaughtException', logFailure);
 process.on('unhandledRejection', logFailure);
 
-process.once('SIGINT', shutdown);
-process.once('SIGTERM', shutdown);
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
 
+report(`${VERSION} starting on Node ${process.version} with arguments ${JSON.stringify(process.argv.slice(2))}`);
 $UD.connect(PLUGIN_UUID);

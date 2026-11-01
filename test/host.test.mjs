@@ -271,7 +271,15 @@ test('the key and the images never reach stdout or stderr', async () => {
   await sleep(100);
   assert.ok(!output.includes(API_KEY), 'API key leaked');
   assert.ok(!output.includes('base64'), 'image data logged');
-  assert.equal(output, '');
+  // Only our own short reports: the SDK's console output carries the key.
+  for (const line of output.split('\n').filter((text) => text.trim())) assert.match(line, /^\[Clima Pro\] /);
+});
+
+test('the log says how the plugin started and each connection and failure', () => {
+  assert.match(output, /\[Clima Pro\] \d+\.\d+\.\d+ starting on Node v\d+.* with arguments \["127\.0\.0\.1","\d+","pt_PT"\]/);
+  assert.match(output, /\[Clima Pro\] connected to Studio/);
+  assert.match(output, /\[Clima Pro\] no connection to Studio, retrying in 1 s \(1 of 10\)/);
+  assert.match(output, /\[Clima Pro\] weather request failed: location \(1006\)/);
 });
 
 test('the log sent to the host never contains the key', () => {

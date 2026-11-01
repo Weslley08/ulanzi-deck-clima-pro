@@ -21,7 +21,6 @@ export class WeatherKey {
   #lastIcon = null;
   #renderToken = 0;
   #lastStatus = null;
-  #lastSearch = '';
 
   constructor(context, { host, hub, version, render = renderFace, search = searchLocations }) {
     this.context = context;
@@ -133,8 +132,7 @@ export class WeatherKey {
     }
     if (payload?.type !== 'search') return;
     const query = String(payload.q ?? '').trim().slice(0, 80);
-    if (query.length < MIN_SEARCH_LENGTH || query === this.#lastSearch || this.hub.keyState !== 'ready') return;
-    this.#lastSearch = query;
+    if (query.length < MIN_SEARCH_LENGTH || this.hub.keyState !== 'ready') return;
     let items = [];
     try {
       items = await this.search(this.hub.apiKey, query);
