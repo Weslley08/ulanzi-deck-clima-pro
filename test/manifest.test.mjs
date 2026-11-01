@@ -84,6 +84,30 @@ test('the text for the store form fits its limits and carries what it must', () 
   assert.match(details, /official channels/);
 });
 
+test('store.json passes the checks of the Community Store, and carries what its readers must see', () => {
+  const store = JSON.parse(readFileSync(new URL('../store.json', import.meta.url), 'utf8'));
+  const isTextList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string');
+  // As in packages/catalog/bin/validate-pr.mjs of narlei/ulanzicommunitystore: a missing image rejects the listing.
+  assert.equal(typeof store.cover, 'string');
+  assert.ok(isTextList(store.screenshots));
+  assert.ok(isTextList(store.tags));
+  assert.equal(typeof store.longDescription, 'string');
+  for (const image of [store.cover, ...store.screenshots]) assert.ok(existsSync(new URL(`../${image}`, import.meta.url)), image);
+  assert.deepEqual(store.deviceTypes, ['deck'], 'every action is a Keypad action');
+  assert.ok(store.longDescription.includes(JSON.parse(read('en.json')).Localization.disclaimer));
+  assert.match(store.longDescription, /Weather data by WeatherAPI\.com/);
+  assert.match(store.longDescription, /Dados meteorológicos da WeatherAPI\.com/);
+  assert.match(store.longDescription, /official channels/);
+  assert.match(store.longDescription, /canais oficiais/);
+  assert.ok(!store.longDescription.includes('**'), 'the store shows this as plain text');
+});
+
+test('the short description credits WeatherAPI.com, because it is all the store shows in English', () => {
+  assert.match(manifest.Description, /Weather data by WeatherAPI\.com/);
+  assert.match(manifest.Description, /safety-critical/);
+  assert.ok(manifest.Description.length <= 300, `${manifest.Description.length} characters`);
+});
+
 test('English is present so every other language has a fallback', () => {
   assert.ok(languages.includes('en.json'));
 });
