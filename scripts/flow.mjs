@@ -167,6 +167,7 @@ const findDraft = (tag) => ghJson('release', 'list', '--limit', '100', '--json',
  * published, so validating again updates a draft and never moves a tag.
  */
 function draftRelease() {
+  requireAutomationToken();
   const version = versionOfReleaseBranch(env('BRANCH'));
   const repository = env('GITHUB_REPOSITORY');
   const commit = env('GITHUB_SHA');
@@ -211,6 +212,7 @@ function openMainPullRequest() {
 
 /** Runs on each push to main, which only a release branch can reach. */
 function publish() {
+  requireAutomationToken();
   const version = manifestVersion(workDir);
   const tag = `v${version}`;
   const tags = tagsOnRepo();
@@ -260,7 +262,22 @@ function moveLatestBranch() {
   gh('api', '-X', 'PATCH', `repos/{owner}/{repo}/git/refs/heads/${LATEST}`, '-f', `sha=${git('rev-parse', 'HEAD')}`);
 }
 
+/** What the Delivery workflow runs on each push, except to a release branch: the branch says what comes next. */
+function next() {
+  const branch = env('BRANCH');
+  if (branch === DEVELOP) return afterDevelop();
+  if (branch !== MAIN) return openPullRequest();
+  // A draft that has to wait is no reason to leave develop behind, so this comes first.
+  try {
+    syncDevelop();
+  } catch {
+    console.log(`::warning::${MAIN} could not be brought back into ${DEVELOP}.`);
+  }
+  return publish();
+}
+
 const COMMANDS = {
+  next,
   'open-pull-request': openPullRequest,
   'check-pull-request': checkPullRequest,
   'after-develop': afterDevelop,

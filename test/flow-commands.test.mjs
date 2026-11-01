@@ -134,7 +134,7 @@ test('a new branch with no commits of its own opens nothing', () => {
 
 test('without the token the step fails and says what to set, instead of looking fine', () => {
   git('switch', '--quiet', '-c', 'fix/thing');
-  for (const command of ['open-pull-request', 'after-develop', 'open-main-pull-request']) {
+  for (const command of ['next', 'open-pull-request', 'after-develop', 'draft-release', 'open-main-pull-request', 'publish', 'sync-develop']) {
     const { status, stderr } = flow(command, { env: { GH_TOKEN: '', BRANCH: 'fix/thing' } });
     assert.equal(status, 1, command);
     assert.match(stderr, /AUTOMATION_TOKEN/, command);
@@ -532,6 +532,14 @@ test('a pull request already bringing main back is enough', () => {
   assert.equal(callsTo(calls, 'pr', 'create').length, 0);
 });
 
+test('new work on develop does not look like something main lacks', () => {
+  mergeIntoDevelop('fix/thing');
+  git('switch', '--quiet', 'main');
+  const { status, calls } = flow('sync-develop', { replies: SYNC_REPLIES });
+  assert.equal(status, 0);
+  assert.equal(calls.length, 0);
+});
+
 test('after a release, main has nothing develop lacks, though develop lacks its merge commit', () => {
   mergeIntoDevelop('fix/thing');
   git('switch', '--quiet', 'main');
@@ -541,6 +549,69 @@ test('after a release, main has nothing develop lacks, though develop lacks its 
   const { status, calls } = flow('sync-develop', { replies: SYNC_REPLIES });
   assert.equal(status, 0);
   assert.equal(calls.length, 0);
+});
+
+test('a push to a work branch opens its pull request', () => {
+  git('switch', '--quiet', '-c', 'fix/thing');
+  writeFileSync(join(work, 'a.txt'), 'a');
+  git('add', '.');
+  git('commit', '-m', 'Fix the thing');
+  const { status, calls, stderr } = flow('next', { replies: [['pr list', []]], env: { BRANCH: 'fix/thing' } });
+  assert.equal(status, 0, stderr);
+  assert.equal(argAfter(callsTo(calls, 'pr', 'create')[0], '--base'), 'develop');
+});
+
+test('a push to develop goes on to the next version or release', () => {
+  mergeIntoDevelop('fix/thing');
+  const { status, calls, stderr } = flow('next', { replies: [['pr list', []]], env: { BRANCH: 'develop' } });
+  assert.equal(status, 0, stderr);
+  assert.match(argAfter(callsTo(calls, 'pr', 'create')[0], '--head'), /^bump\/v/);
+});
+
+test('a push to main brings back what came straight to it, and publishes', () => {
+  const { version, validated } = mergedRelease();
+  writeFileSync(join(work, 'straight.txt'), 'came straight to main');
+  git('add', '.');
+  git('commit', '-m', 'Store text');
+  const { status, calls, stderr } = flow('next', {
+    env: { BRANCH: 'main' },
+    replies: [['pr list', []], ['pr create', 'https://example.com/pull/7'], ['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
+  });
+  assert.equal(status, 1, 'that code was not validated, so this one stays a draft');
+  assert.match(stderr, /stays a draft/);
+  assert.equal(argAfter(callsTo(calls, 'pr', 'create')[0], '--head'), 'main');
+});
+
+test('a push to main with what was validated publishes', () => {
+  const { version, validated } = mergedRelease();
+  const { status, calls, stderr } = flow('next', {
+    env: { BRANCH: 'main' },
+    replies: [['pr list', []], ['pr create', 'https://example.com/pull/7'], ['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
+  });
+  assert.equal(status, 0, stderr);
+  assert.ok(callsTo(calls, 'release', 'edit')[0].includes('--draft=false'));
+});
+
+test('failing to bring main back does not stop the publishing', () => {
+  const { version, validated } = mergedRelease();
+  const { status, stdout, calls } = flow('next', {
+    env: { BRANCH: 'main' },
+    replies: [['pr list', { fail: true }], ['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
+  });
+  assert.equal(status, 0);
+  assert.match(stdout, /could not be brought back/);
+  assert.ok(callsTo(calls, 'release', 'edit')[0].includes('--draft=false'));
+});
+
+test('a draft that has to wait does not stop main from going back to develop, and the step fails', () => {
+  const { version, validated } = mergedRelease();
+  const { status, calls } = flow('next', {
+    env: { BRANCH: 'main' },
+    replies: [['pr list', []], ['pr create', 'https://example.com/pull/7'], ['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: 'WRITE THIS FOR CUSTOMERS.' }]],
+  });
+  assert.equal(status, 1);
+  assert.equal(callsTo(calls, 'pr', 'create').length, 1);
+  assert.equal(callsTo(calls, 'release', 'edit').length, 0);
 });
 
 test('Branch flow reads the pull request from the environment and fails with the reason', () => {
@@ -567,9 +638,15 @@ test('the repository setup protects each branch of the flow with the checks that
 
   const protections = callsTo(calls, 'api', '-X', 'PUT').filter((args) => args[3].endsWith('/protection'));
   assert.deepEqual(protections.map((args) => args[3].split('/').at(-2)), ['develop', 'main']);
-  const ci = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
-  for (const check of ['Coverage', 'Package', 'Security']) assert.match(ci, new RegExp(`name: ${check}\\b`), check);
-  assert.match(readFileSync(join(root, '.github', 'workflows', 'branch-flow.yml'), 'utf8'), /name: Branch flow\n\s+runs-on/);
+  const gate = readFileSync(join(root, '.github', 'workflows', 'gate.yml'), 'utf8');
+  for (const check of ['Coverage', 'Package', 'Security', 'Workflows', 'Branch flow']) {
+    assert.match(gate, new RegExp(`name: ${check}\\r?\\n`), check);
+    assert.ok(requiredIn(protections[0].at(-1)).includes(check), check);
+  }
+  for (const job of ['analyze', 'review']) {
+    assert.match(gate, new RegExp(`^  ${job}:\\r?\\n    needs: rules`, 'm'), job);
+    assert.ok(requiredIn(protections[0].at(-1)).includes(job), job);
+  }
   for (const args of protections) {
     const body = args.at(-1);
     assert.ok(requiredIn(body).includes('Branch flow'));

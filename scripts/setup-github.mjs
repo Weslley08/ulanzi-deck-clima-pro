@@ -8,7 +8,7 @@ const RELEASE_PATTERN = 'release/v*';
 
 // A required check that never reports blocks every merge, so these are the names seen on a real pull request.
 // CodeQL reports even where its base was never analyzed: it did on the first pull request to develop.
-const CHECKS = ['Test (windows-latest)', 'Test (macos-latest)', 'Test (ubuntu-latest)', 'Coverage', 'Package', 'Security', 'analyze', 'CodeQL', 'review', 'Branch flow'];
+const CHECKS = ['Test (windows-latest)', 'Test (macos-latest)', 'Test (ubuntu-latest)', 'Coverage', 'Package', 'Security', 'analyze', 'CodeQL', 'review', 'Workflows', 'Branch flow'];
 
 const dryRun = process.argv.includes('--dry-run');
 

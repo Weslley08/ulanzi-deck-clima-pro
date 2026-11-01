@@ -193,7 +193,7 @@ test('notes with the technical details removed by hand get them back', () => {
 });
 
 test('every work prefix opens a pull request, and only those', () => {
-  const workflow = readFileSync(join(root, '.github', 'workflows', 'open-pull-request.yml'), 'utf8');
+  const workflow = readFileSync(join(root, '.github', 'workflows', 'delivery.yml'), 'utf8');
   const listed = [...workflow.matchAll(/^\s+- ([a-z]+)\/\*\*$/gm)].map(([, prefix]) => prefix);
   assert.deepEqual(listed, WORK_PREFIXES);
 });
