@@ -62,6 +62,22 @@
           <option value="f">°F · mph</option>
         </select>
       </div>
+
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="alerts" data-localize>Defesa Civil alerts</label>
+        <select class="uspi-item-value select" id="alerts" name="alerts">
+          <option value="on" data-localize>On</option>
+          <option value="off" data-localize>Off</option>
+        </select>
+      </div>
+      <div class="uspi-item field-note">
+        <div class="uspi-item-label empty"></div>
+        <div class="field-note-body">
+          <p class="tip info" id="alertStatus" role="status"></p>
+          <div id="alertList"></div>
+          <p class="alert-note" data-localize="alerts.note">Brazil only. Official alerts from the public Defesa Civil feed (IDAP). Some alerts sent to phones may not appear in it, so this does not replace official channels. While the key is on screen it downloads the feed about every 5 minutes, several MB each time.</p>
+        </div>
+      </div>
     </form>
 
     <hr>

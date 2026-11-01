@@ -394,6 +394,154 @@ test('links open in the browser through the host, not inside the panel', options
   assert.equal(await run(`location.href`), before);
 });
 
+const alertsMessage = (state, items = [], country = undefined) => fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'alerts', state, checkedAt: 1, items, country } });
+const ALERT_ITEM = {
+  id: '1',
+  severity: 'EXTREME',
+  level: 'EXTREMO',
+  title: 'CHUVAS INTENSAS',
+  description: 'Alerta em Ivolândia de risco ALTO.',
+  instructions: 'Em caso de emergência 193.',
+  issuer: 'Defesa Civil Estadual de Goiás',
+  area: 'Ivolândia/GO',
+  until: '22:00',
+  url: 'https://www.gov.br/mdr/guia?a=1&b=2',
+};
+
+test('alerts can be turned off for a key, and that saves with the other settings', options, async () => {
+  messages = [];
+  await run(`(() => { const el = document.querySelector('#alerts'); el.value = 'off'; el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
+  assert.equal(saved.param.alerts, 'off');
+  assert.equal(saved.param.apiKey, undefined);
+});
+
+test('a key saved before alerts existed shows them on', options, async () => {
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'sky', location: 'Rio', screen: 'now', unit: 'c' } });
+  await until(`document.querySelector('#alerts').value === 'on'`);
+});
+
+test('the panel has no second place field: alerts use the place above', options, async () => {
+  assert.equal(await run(`document.querySelectorAll('input[type=text]').length`), 1);
+});
+
+test('each state reads differently, and a failed check never looks like no alerts', options, async () => {
+  const line = `document.querySelector('#alertStatus')`;
+  alertsMessage('clear');
+  await until(`${line}.className === 'tip success'`);
+  const clear = await run(`${line}.textContent`);
+  alertsMessage('unavailable');
+  await until(`${line}.className === 'tip error'`);
+  const unavailable = await run(`${line}.textContent`);
+  assert.notEqual(clear, unavailable);
+  assert.match(unavailable, /não significa/);
+  await screenshot('panel-alerts-unavailable');
+  alertsMessage('stale');
+  await until(`${line}.textContent.includes('antiga')`);
+  assert.equal(await run(`${line}.className`), 'tip error');
+  alertsMessage('disabled');
+  await until(`${line}.textContent.includes('desligados')`);
+  assert.equal(await run(`${line}.className`), 'tip info');
+});
+
+const alertOption = `document.querySelector('#alerts')`;
+
+test('outside Brazil the option reads Off, cannot be changed, and the panel says why and which country', options, async () => {
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'sky', location: 'Lisbon', screen: 'now', unit: 'c', alerts: 'on' } });
+  await until(`document.querySelector('#location').value === 'Lisbon'`);
+  assert.equal(await run(`${alertOption}.disabled`), false);
+  alertsMessage('outside', [], 'Portugal');
+  await until(`${alertOption}.disabled`);
+  assert.equal(await run(`${alertOption}.value`), 'off');
+  const text = await run(`document.querySelector('#alertStatus').textContent`);
+  assert.match(text, /só cobre o Brasil/);
+  assert.match(text, /País encontrado: Portugal/);
+  assert.equal(await run(`document.querySelector('#alertStatus').className`), 'tip warn');
+  assert.equal(await run(`getComputedStyle(document.querySelector('.alert-note')).display`), 'none', 'the note on data use does not apply here');
+  await screenshot('panel-alerts-outside');
+});
+
+test('the country from the API cannot inject markup', options, async () => {
+  alertsMessage('outside', [], '<img src=x onerror="window.countryPwned=1">');
+  await until(`document.querySelector('#alertStatus').textContent.includes('onerror')`);
+  assert.equal(await run(`document.querySelector('#alertStatus img')`), null);
+  await sleep(50);
+  assert.equal(await run(`window.countryPwned ?? null`), null);
+});
+
+test('outside Brazil, saving another setting keeps the choice the key had', options, async () => {
+  alertsMessage('outside', [], 'Portugal');
+  await until(`${alertOption}.disabled`);
+  messages = [];
+  await run(`document.querySelector('[name=theme][value=neon]').click()`);
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
+  assert.equal(saved.param.theme, 'neon');
+  assert.equal(saved.param.alerts, 'on');
+});
+
+test('a press on the key outside Brazil leaves the option as it was', options, async () => {
+  fromHost({ cmd: 'paramfromplugin', param: { theme: 'neon', location: 'Lisbon', screen: 'details', unit: 'c', alerts: 'on' } });
+  await until(`document.querySelector('#screen').value === 'details'`);
+  assert.equal(await run(`${alertOption}.disabled`), true);
+  assert.equal(await run(`${alertOption}.value`), 'off');
+});
+
+test('a place in Brazil brings the option back as the key had it', options, async () => {
+  alertsMessage('clear');
+  await until(`!${alertOption}.disabled`);
+  assert.equal(await run(`${alertOption}.value`), 'on');
+  assert.notEqual(await run(`getComputedStyle(document.querySelector('.alert-note')).display`), 'none');
+});
+
+test('a key that had alerts off keeps them off when it comes back to Brazil', options, async () => {
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'neon', location: 'Lisbon', screen: 'now', unit: 'c', alerts: 'off' } });
+  await until(`${alertOption}.value === 'off'`);
+  alertsMessage('outside', [], 'Portugal');
+  await until(`${alertOption}.disabled`);
+  alertsMessage('disabled');
+  await until(`!${alertOption}.disabled`);
+  assert.equal(await run(`${alertOption}.value`), 'off');
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'sky', location: 'Rio', screen: 'now', unit: 'c', alerts: 'on' } });
+  await until(`${alertOption}.value === 'on'`);
+});
+
+test('an active alert shows in full, as plain text', options, async () => {
+  alertsMessage('active', [ALERT_ITEM, { ...ALERT_ITEM, id: '2', severity: 'SEVERE', level: 'SEVERO', url: undefined, instructions: undefined }]);
+  await until(`document.querySelectorAll('.alert-card').length === 2`);
+  const first = await run(`document.querySelector('.alert-card').textContent`);
+  for (const part of ['EXTREMO', 'CHUVAS INTENSAS', 'Ivolândia/GO', '22:00', 'risco ALTO', 'emergência 193', 'Estadual de Goiás', 'Orientações oficiais']) assert.ok(first.includes(part), part);
+  assert.equal(await run(`document.querySelector('.alert-card').dataset.severity`), 'EXTREME');
+  assert.equal(await run(`document.querySelectorAll('.alert-card')[1].querySelector('a')`), null);
+  await screenshot('panel-alerts');
+});
+
+test('text from the feed cannot inject markup, and a link that is not https gets no button', options, async () => {
+  const attack = '<img src=x onerror="window.alertPwned=1">';
+  alertsMessage('active', [{ ...ALERT_ITEM, title: attack, description: attack, instructions: attack, issuer: attack, area: attack, url: 'javascript:window.alertPwned=1' }]);
+  await until(`document.querySelector('.alert-card').textContent.includes('onerror')`);
+  assert.equal(await run(`document.querySelector('.alert-card img')`), null);
+  assert.equal(await run(`document.querySelector('.alert-card a')`), null);
+  await sleep(50);
+  assert.equal(await run(`window.alertPwned ?? null`), null);
+});
+
+test('the official link opens through the host, with its query passed the way the host requires', options, async () => {
+  alertsMessage('active', [ALERT_ITEM]);
+  await until(`document.querySelector('.alert-card a') !== null`);
+  messages = [];
+  const before = await run(`location.href`);
+  await run(`document.querySelector('.alert-card a').click()`);
+  const open = await waitForMessage((m) => m.cmd === 'openurl');
+  assert.equal(open.url, 'https://www.gov.br/mdr/guia');
+  assert.deepEqual(open.param, { a: '1', b: '2' });
+  assert.equal(await run(`location.href`), before);
+});
+
+test('when alerts end, their cards go too', options, async () => {
+  alertsMessage('clear');
+  await until(`document.querySelectorAll('.alert-card').length === 0`);
+});
+
 test('the key never reaches the browser console, where debug tools and logs can read it', options, async () => {
   await sleep(100);
   for (const line of consoleOutput) {

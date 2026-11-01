@@ -59,6 +59,42 @@ async function themeSheet() {
   save('docs/themes.png', await svgToPng(svg, width));
 }
 
+const withAlertOf = (severity, pulse = 0, uncertain = false) => (view) => ({ ...view, alert: { severity, pulse, uncertain } });
+const ALERT_SAMPLE = {
+  severity: 'EXTREME',
+  title: 'CHUVAS INTENSAS',
+  description: 'Alerta em Ivolândia de risco ALTO de alagamentos e enxurradas.',
+  until: '22:00',
+  index: 0,
+  total: 2,
+  temp: '27°',
+  city: 'Ivolândia',
+};
+const ALERT_COLUMNS = [
+  (t) => sampleView(t, 'now'),
+  (t) => withAlertOf('SEVERE')(sampleView(t, 'now')),
+  (t) => withAlertOf('EXTREME')(sampleView(t, 'now')),
+  (t) => withAlertOf('EXTREME')(sampleView(t, 'details')),
+  (t) => withAlertOf('MODERATE')(sampleView(t, 'now')),
+  (t) => withAlertOf(null, 0, true)(sampleView(t, 'now')),
+  (t) => ({ theme: t, screen: 'alertPage', ...ALERT_SAMPLE }),
+];
+
+// What a key looks like in each alert state, on every theme.
+async function alertSheet() {
+  const face = 216;
+  const gap = 20;
+  const width = ALERT_COLUMNS.length * (face + gap) + gap;
+  const height = THEME_IDS.length * (face + gap) + gap;
+  let body = '';
+  for (const [row, theme] of THEME_IDS.entries()) {
+    for (const [col, build] of ALERT_COLUMNS.entries()) {
+      body += placed(await facePng(build(theme), face), gap + col * (face + gap), gap + row * (face + gap), face);
+    }
+  }
+  save('docs/alerts.png', await svgToPng(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#17181B"/>${body}</svg>`, width));
+}
+
 async function thumbnails() {
   for (const theme of THEME_IDS) {
     save(plugin(`resources/themes/${theme}.png`), await facePng(sampleView(theme, 'now'), 144));
@@ -132,8 +168,10 @@ async function store() {
 const only = process.argv[2];
 if (only === 'sheet') {
   await themeSheet();
+  await alertSheet();
 } else {
   await themeSheet();
+  await alertSheet();
   await thumbnails();
   await icons();
   await store();

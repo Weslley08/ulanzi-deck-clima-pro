@@ -42,3 +42,47 @@ export function buildWeatherView(weather, settings, screen, stale = false) {
 export function buildMessageView(settings, message, glyph) {
   return { theme: settings.theme, screen: 'message', isDay: true, condition: 'cloudy', message, glyph: glyph ?? null };
 }
+
+const UNCERTAIN_STATES = new Set(['stale', 'unavailable']);
+
+/**
+ * Adds what the themes need to know about alerts. With nothing to say the view comes back untouched,
+ * so a key with no alert renders exactly what it did before alerts existed.
+ * @param {object} view
+ * @param {import('./alert-types').AlertSnapshot} snapshot
+ * @param {number} [pulse] step of the extreme animation
+ */
+export function withAlert(view, { state, alerts }, pulse = 0) {
+  const uncertain = UNCERTAIN_STATES.has(state);
+  const severity = alerts[0]?.severity ?? null;
+  if (!severity && !uncertain) return view;
+  return { ...view, alert: { severity, uncertain, pulse: severity === 'EXTREME' ? pulse : 0 } };
+}
+
+const twoDigits = (n) => String(n).padStart(2, '0');
+
+/** In local time, with the date only when it is not today. */
+export function alertEndTime(ms, now = Date.now()) {
+  const end = new Date(ms);
+  const clock = `${twoDigits(end.getHours())}:${twoDigits(end.getMinutes())}`;
+  return end.toDateString() === new Date(now).toDateString() ? clock : `${twoDigits(end.getDate())}/${twoDigits(end.getMonth() + 1)} ${clock}`;
+}
+
+/**
+ * The page a press opens. Always in Portuguese, because the text comes from the issuer that way.
+ * @param {import('./alert-types').DefesaCivilAlert} alert
+ */
+export function buildAlertPageView(alert, index, total, settings, weatherView) {
+  return {
+    theme: settings.theme,
+    screen: 'alertPage',
+    severity: alert.severity,
+    title: alert.title,
+    description: alert.description,
+    until: alertEndTime(alert.expiresAt),
+    index,
+    total,
+    temp: weatherView?.temp ?? null,
+    city: weatherView?.city ?? null,
+  };
+}

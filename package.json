@@ -1,15 +1,19 @@
 {
   "name": "ulanzi-deck-clima-pro",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Development tooling for the Clima Pro plugin for Ulanzi Studio.",
   "type": "module",
   "license": "Apache-2.0",
-  "engines": { "node": ">=20.12.2" },
+  "engines": {
+    "node": ">=20.12.2"
+  },
   "scripts": {
     "setup": "npm ci && npm ci --prefix com.ulanzi.climapro.ulanziPlugin",
     "test": "node scripts/run-tests.mjs",
     "test:live": "node --test test/live/weatherapi.live.mjs",
+    "test:live:alerts": "node --test test/live/idap.live.mjs",
+    "typecheck": "tsc --project tsconfig.json",
     "watch:updates": "node scripts/watch-updates.mjs",
     "build:glyphs": "node scripts/build-glyphs.mjs",
     "build:assets": "node scripts/build-assets.mjs",
@@ -25,7 +29,9 @@
     "@fontsource/orbitron": "5.3.0",
     "@fontsource/outfit": "5.3.0",
     "@fontsource/vt323": "5.3.0",
+    "@types/node": "20.12.14",
     "opentype.js": "2.0.0",
+    "typescript": "5.9.3",
     "ws": "8.22.1"
   }
 }

@@ -17,7 +17,7 @@ const LABEL_CHARS = [
   ...range(0x20, 0x7e),
   ...range(0xc0, 0xff).filter((c) => c !== '×' && c !== '÷'),
   ...range(0x100, 0x17f),
-  '°', '·', '…', '−',
+  '°', '·', '…', '−', '—',
 ];
 const DIGIT_CHARS = [...'0123456789-−°%'];
 

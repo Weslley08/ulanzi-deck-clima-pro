@@ -51,6 +51,25 @@ The polling relies on `last_updated` moving in steps of about 15 minutes. That c
 - [ ] `WEATHERAPI_KEY=xxx npm run watch:updates` shows steps of about 15 minutes. If it does not, change `UPDATE_DUE_MS` in `weather-hub.js`
 - [ ] With a key on screen, the weather changes within a few minutes of `last_updated` moving
 
+## Defesa Civil alerts
+
+`npm run test:live:alerts` checks the real feed first and lists the alerts in force. A real alert cannot be ordered, so to test the states, pick a place from that list. For a state not listed right now, wait for a stormy day. Disconnecting from the internet covers the failure states.
+
+- [ ] A place in Brazil with no alert looks exactly as it did before: no mark and no smaller forecast
+- [ ] A place outside Brazil never downloads the feed, and its key looks as usual. In the panel, the Defesa Civil option is greyed out as Off, with a warning that says why and which country was found
+- [ ] Choosing a place in Brazil again brings the option back as it was, and alerts return without restarting Studio
+- [ ] With an alert over the place, the temperature, condition and city stay readable **on the device**, on every theme, on both screens
+- [ ] `DEFESA CIVIL — SEVERO` and `DEFESA CIVIL — EXTREMO` can be read at arm's length. If they cannot, the text is about 10 px and `BAND_TEXT_MAX` in `alert-layer.js` is the place to start
+- [ ] The extreme frame's glow looks slow and steady on the device, without flashing, and the keys stay responsive. It sends one image a second
+- [ ] One press opens the alert, on the D200H too, and the next press moves on
+- [ ] An alert page goes back to the forecast after 30 seconds. After restarting Studio, the key starts on the forecast
+- [ ] The panel shows the full text, with accents. "Orientações oficiais" opens in the browser
+- [ ] Changing the place removes the old place's alerts at once
+- [ ] Without internet, the weather carries on, and after 15 minutes the hollow sign appears and the panel says the check is getting old. No message on the key or the panel claims there are no alerts
+- [ ] When the connection returns, the sign goes away by itself
+- [ ] With **Defesa Civil alerts** set to **Off** on every key, the system monitor shows no more 7 MB downloads
+- [ ] An alert ends at its time, without a new download
+
 ## Life cycle
 
 - [ ] Going to another page and back redraws the key at once
