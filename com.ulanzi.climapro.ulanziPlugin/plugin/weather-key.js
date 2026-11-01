@@ -1,6 +1,6 @@
 // One instance per key on the deck.
 import { renderFace } from './render/renderer.js';
-import { SCREENS, normalizeSettings } from './settings.js';
+import { SCREENS, normalizeSettings, placeQuery } from './settings.js';
 import { buildMessageView, buildWeatherView } from './view.js';
 import { searchLocations } from './weather-api.js';
 
@@ -33,11 +33,11 @@ export class WeatherKey {
 
   updateSettings(param) {
     const next = normalizeSettings(param);
-    const samePlace = this.#subscription && next.location === this.settings.location;
+    const samePlace = this.#subscription && placeQuery(next) === placeQuery(this.settings);
     this.settings = next;
     if (!samePlace) {
       this.#subscription?.close();
-      this.#subscription = this.hub.subscribe(next.location, {
+      this.#subscription = this.hub.subscribe(placeQuery(next), {
         active: this.active,
         onUpdate: () => this.onWeatherChanged(),
       });
@@ -111,8 +111,9 @@ export class WeatherKey {
     const { data, error, stale } = this.#subscription.snapshot();
     if (error && !stale) return { type: 'status', state: error.kind };
     if (!data) return { type: 'status', state: 'loading' };
-    const { name, country } = data.location;
-    return { type: 'status', state: stale ? error.kind : 'ok', place: [name, country].filter(Boolean).join(', ') };
+    // The region tells apart places that share a name.
+    const { name, region, country } = data.location;
+    return { type: 'status', state: stale ? error.kind : 'ok', place: [name, region, country].filter(Boolean).join(', ') };
   }
 
   /** The inspector only exists while the key is selected, and the host drops messages sent without one. */

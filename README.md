@@ -21,7 +21,9 @@ Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi 
    Then restart Studio.
 2. Create a free key at [weatherapi.com](https://www.weatherapi.com/signup). Keep it private: it is tied to your account.
 3. Drag **Weather** onto a key and paste your key into the settings panel. You only do this once.
-4. Type a place, or leave it empty to detect it from your IP. Pick a theme.
+4. Type a place and choose it from the list, or leave it empty to detect it from your IP. Pick a theme. The panel shows the place it found with its state, because different places can share a name.
+
+WeatherAPI.com may not know your neighbourhood, and a neighbourhood's name can match a town somewhere else. If so, choose your city.
 
 The panel and the messages on the key are available in English, Portuguese, Spanish and German. Keys draw the Latin alphabet only, so other scripts in a place name are left out. To put your own name on a key, use the title field in Ulanzi Studio.
 

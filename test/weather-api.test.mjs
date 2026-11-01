@@ -120,9 +120,14 @@ test('network failures never carry the key, even if the runtime quotes the URL',
   });
 });
 
-test('search returns readable labels, at most five', async () => {
-  stubFetch(200, Array.from({ length: 8 }, (_, i) => ({ name: `City ${i}`, region: '', country: 'Brazil' })));
-  const labels = await searchLocations(KEY, 'city');
-  assert.equal(labels.length, 5);
-  assert.equal(labels[0], 'City 0, Brazil');
+test('search returns readable labels with their IDs, at most five', async () => {
+  stubFetch(200, Array.from({ length: 8 }, (_, i) => ({ id: 100 + i, name: `City ${i}`, region: '', country: 'Brazil' })));
+  const items = await searchLocations(KEY, 'city');
+  assert.equal(items.length, 5);
+  assert.deepEqual(items[0], { id: 100, label: 'City 0, Brazil' });
+});
+
+test('search keeps the region, which tells apart places with the same name', async () => {
+  stubFetch(200, [{ id: 277112, name: 'Jabaquara', region: 'Espirito Santo', country: 'Brazil' }]);
+  assert.deepEqual(await searchLocations(KEY, 'jabaquara'), [{ id: 277112, label: 'Jabaquara, Espirito Santo, Brazil' }]);
 });

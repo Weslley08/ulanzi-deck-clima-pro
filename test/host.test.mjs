@@ -97,16 +97,19 @@ after(() => {
   rmSync(workDir, { recursive: true, force: true });
 });
 
-test('announces the plugin UUID and asks for the saved key', async () => {
+test('announces the plugin UUID, and waits for a key on the deck to ask for the saved API key', async () => {
   const connected = await waitFor((m) => m.cmd === 'connected');
   assert.equal(connected.uuid, PLUGIN_UUID);
-  await waitFor((m) => m.cmd === 'getGlobalSettings');
+  await sleep(QUIET_MS);
+  assert.equal(received.find((m) => m.cmd === 'getGlobalSettings'), undefined);
 });
 
 test('with no key saved, a new key asks for one instead of calling the API', async () => {
   send({ cmd: 'didReceiveGlobalSettings', uuid: PLUGIN_UUID, key: '', actionid: '', settings: {} });
   await sleep(50);
   send({ cmd: 'add', ...keyMessage('0_0', 'a1', { param: {} }) });
+  const ask = await waitFor((m) => m.cmd === 'getGlobalSettings');
+  assert.deepEqual([ask.uuid, ask.key, ask.actionid], [ACTION_UUID, '0_0', 'a1']);
   const face = await waitFor(iconFor('0_0'));
   assert.match(iconOf(face), /^data:image\/png;base64,/);
   assert.equal(requests().length, 0);
@@ -187,7 +190,7 @@ test('the inspector gets a status when it opens', async () => {
   const status = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'status');
   assert.equal(status.key, '2_0');
   assert.equal(status.payload.state, 'ok');
-  assert.equal(status.payload.place, 'São Paulo, Brazil');
+  assert.equal(status.payload.place, 'São Paulo, Sao Paulo, Brazil');
 });
 
 test('the inspector is told the version in the manifest', async () => {
@@ -201,7 +204,15 @@ test('the inspector is told the version in the manifest', async () => {
 test('the inspector gets place suggestions', async () => {
   send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'search', q: 'Sao Pa' } }) });
   const reply = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'suggestions');
-  assert.deepEqual(reply.payload.items, ['São Paulo, Sao Paulo, Brazil']);
+  assert.deepEqual(reply.payload.items, [{ id: 290780, label: 'São Paulo, Sao Paulo, Brazil' }]);
+});
+
+test('a place chosen from the list is requested by its ID, not its text', async () => {
+  send({ cmd: 'add', ...keyMessage('5_0', 'a6', { param: { location: 'Jabaquara, Espirito Santo, Brazil', placeId: '277112' } }) });
+  await waitFor(iconFor('5_0'));
+  const lines = requests().filter((line) => line.startsWith('/v1/current.json'));
+  assert.ok(lines.some((line) => line.startsWith('/v1/current.json id:277112 ')), lines.join('\n'));
+  assert.ok(!lines.some((line) => line.includes('Jabaquara')), lines.join('\n'));
 });
 
 test('a too short search does not spend a call', async () => {
@@ -248,6 +259,8 @@ test('after losing the host it reconnects on the same port and redraws, in the s
   received = [];
   socket.terminate();
   await waitFor((m) => m.cmd === 'connected');
+  const ask = await waitFor((m) => m.cmd === 'getGlobalSettings');
+  assert.ok(ask.key && ask.actionid, 'the SDK requires a context from the main service');
   await waitFor(iconFor('0_0'));
   assert.equal(plugin.exitCode, null);
   send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'hello' } }) });
