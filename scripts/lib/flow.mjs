@@ -11,7 +11,7 @@ const NEW_FEATURE_PREFIXES = new Set(['feature', 'feat']);
 const VERSION = /^\d+\.\d+\.\d+$/;
 const RELEASE_BRANCH = /^release\/v(\d+\.\d+\.\d+)$/;
 // What GitHub writes when a pull request merges, from this repository or from a fork.
-const MERGE_SUBJECT = /^Merge pull request #\d+ from [^/\s]+\/(\S+)$/;
+const MERGE_SUBJECT = /^Merge pull request #\d+ from ([^/\s]+)\/(\S+)$/;
 // The box in the pull request to main. Merging there publishes, and CI cannot see the device.
 const DEVICE_CHECK = /^\s*[-*]\s*\[[xX]\].*docs\/VERIFY\.md/m;
 const UNTICKED_BOX = /^\s*[-*]\s*\[ \]/m;
@@ -37,7 +37,13 @@ export const versionTags = (tags) => tags
   .map((tag) => tag.slice(1))
   .sort(compareVersions);
 
-export const mergedBranches = (subjects) => subjects.flatMap((subject) => MERGE_SUBJECT.exec(subject)?.[1] ?? []);
+/** Bringing main back into develop is not new work, but a fork's own branch called main is. */
+export function mergedBranches(subjects, owner) {
+  return subjects.flatMap((subject) => {
+    const [, from, branch] = MERGE_SUBJECT.exec(subject) ?? [];
+    return branch && !(from === owner && branch === MAIN) ? [branch] : [];
+  });
+}
 
 /** A new feature raises the second number and anything else the third. A bigger jump is made by hand. */
 export function nextVersion(last, branches) {
@@ -91,7 +97,14 @@ export function workPullRequest({ branch, subjects, template }) {
 export function bumpPullRequest(version) {
   return {
     title: `Raise the version to ${version}`,
-    body: `What was merged into \`${DEVELOP}\` needs a new version. This merges by itself once the checks pass, and then the pull request for \`${releaseBranch(version)}\` opens.\n\nFor a different number, close this and run \`npm run bump -- X.Y.Z\` in a branch.`,
+    body: `What was merged into \`${DEVELOP}\` needs a new version. This merges by itself once the checks pass, and then the pull request for \`${releaseBranch(version)}\` opens.\n\nFor a bigger number, close this and run \`npm run bump -- X.Y.Z\` in a branch.`,
+  };
+}
+
+export function syncPullRequest() {
+  return {
+    title: `Bring ${MAIN} back into ${DEVELOP}`,
+    body: `Something reached \`${MAIN}\` that \`${DEVELOP}\` does not have, so work branches would miss it. This merges by itself once the checks pass, and asks for no new version. If the files conflict, it needs a merge by hand.`,
   };
 }
 

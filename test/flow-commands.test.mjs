@@ -169,6 +169,30 @@ test('a new feature asks for the second number', () => {
   assert.equal(argAfter(callsTo(calls, 'pr', 'create')[0], '--head'), `bump/v${nextMinor(before)}`);
 });
 
+test('what already reached main does not count towards the next version', () => {
+  const before = currentVersion();
+  git('switch', '--quiet', 'main');
+  git('switch', '--quiet', '-c', 'feat/listing');
+  writeFileSync(join(work, 'listing.txt'), 'store text');
+  git('add', '.');
+  git('commit', '-m', 'New store text');
+  git('switch', '--quiet', 'main');
+  git('merge', '--no-ff', 'feat/listing', '-m', 'Merge pull request #1 from owner/feat/listing');
+  git('push', 'origin', 'main', '--quiet');
+  git('switch', '--quiet', 'develop');
+  git('merge', '--no-ff', 'origin/main', '-m', 'Merge pull request #2 from owner/main');
+  git('push', 'origin', 'develop', '--quiet');
+
+  const idle = flow('after-develop', { replies: [['pr list', []]] });
+  assert.equal(idle.status, 0, idle.stderr);
+  assert.equal(callsTo(idle.calls, 'pr', 'create').length, 0, 'bringing main back asks for nothing');
+
+  rmSync(log);
+  mergeIntoDevelop('fix/thing', 3);
+  const { calls } = flow('after-develop', { replies: [['pr list', []]] });
+  assert.equal(argAfter(callsTo(calls, 'pr', 'create')[0], '--head'), `bump/v${nextPatch(before)}`, 'a patch, though a feature reached main');
+});
+
 test('if auto-merge cannot be turned on, the pull request is still there and the job says so', () => {
   mergeIntoDevelop('fix/thing');
   const { status, stdout, calls } = flow('after-develop', { replies: [['pr list', []], ['pr merge', { fail: true }]] });
@@ -480,6 +504,43 @@ test('a failure to delete the release branch does not undo the publishing', () =
   assert.equal(status, 0);
   assert.equal(callsTo(calls, 'release', 'edit').length, 1);
   assert.match(stdout, /could not be deleted/);
+});
+
+const SYNC_REPLIES = [['pr list', []], ['pr create', 'https://example.com/pull/7']];
+
+function commitDirectlyOnMain() {
+  git('switch', '--quiet', 'main');
+  writeFileSync(join(work, 'straight.txt'), 'came straight to main');
+  git('add', '.');
+  git('commit', '-m', 'Store text');
+  git('push', 'origin', 'main', '--quiet');
+}
+
+test('something that came straight to main goes back to develop by itself', () => {
+  commitDirectlyOnMain();
+  const { status, calls, stderr } = flow('sync-develop', { replies: SYNC_REPLIES });
+  assert.equal(status, 0, stderr);
+  const [create] = callsTo(calls, 'pr', 'create');
+  assert.equal(argAfter(create, '--base'), 'develop');
+  assert.equal(argAfter(create, '--head'), 'main');
+  assert.deepEqual(callsTo(calls, 'pr', 'merge')[0], ['pr', 'merge', 'https://example.com/pull/7', '--auto', '--merge']);
+});
+
+test('a pull request already bringing main back is enough', () => {
+  commitDirectlyOnMain();
+  const { calls } = flow('sync-develop', { replies: [['pr list', [{ number: 7 }]]] });
+  assert.equal(callsTo(calls, 'pr', 'create').length, 0);
+});
+
+test('after a release, main has nothing develop lacks, though develop lacks its merge commit', () => {
+  mergeIntoDevelop('fix/thing');
+  git('switch', '--quiet', 'main');
+  git('merge', '--no-ff', 'develop', '-m', 'Merge pull request #9 from owner/release/v9.9.9');
+  git('push', 'origin', 'main', '--quiet');
+  assert.notEqual(git('rev-list', '--count', 'origin/develop..HEAD'), '0');
+  const { status, calls } = flow('sync-develop', { replies: SYNC_REPLIES });
+  assert.equal(status, 0);
+  assert.equal(calls.length, 0);
 });
 
 test('Branch flow reads the pull request from the environment and fails with the reason', () => {

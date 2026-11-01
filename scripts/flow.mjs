@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   DEVELOP, MAIN, bumpBranch, bumpPullRequest, compareVersions, draftNotes, flowProblem, mainPullRequest, mergedBranches,
-  notesStillToWrite, planDevelop, refreshNotes, releaseBranch, releasePullRequest, versionOfReleaseBranch, versionTags, workPullRequest,
+  notesStillToWrite, planDevelop, refreshNotes, releaseBranch, releasePullRequest, syncPullRequest, versionOfReleaseBranch, versionTags, workPullRequest,
 } from './lib/flow.mjs';
 import { PLUGIN_FOLDER } from './lib/project.mjs';
 import { manifestVersion, setVersion, versionMismatches } from './lib/version.mjs';
@@ -47,7 +47,17 @@ const commitsAhead = (base, head) => ghJson('api', `repos/{owner}/{repo}/compare
 const openPullRequests = () => ghJson('pr', 'list', '--state', 'open', '--limit', '100', '--json', 'number,headRefName,baseRefName');
 
 function createPullRequest(base, head, { title, body }) {
-  console.log(gh('pr', 'create', '--base', base, '--head', head, '--title', title, '--body', body));
+  const url = gh('pr', 'create', '--base', base, '--head', head, '--title', title, '--body', body);
+  console.log(url);
+  return url;
+}
+
+function mergeByItself(pullRequest) {
+  try {
+    gh('pr', 'merge', pullRequest, '--auto', '--merge');
+  } catch {
+    console.log('::warning::Auto-merge could not be turned on, so this pull request needs a merge by hand.');
+  }
 }
 
 /** Runs on each push to a work branch. */
@@ -98,11 +108,7 @@ function openBumpPullRequest(version, open) {
   // Only this automation writes to bump/ branches, and one may be left over from a run that stopped here.
   git('push', '--force', 'origin', `HEAD:refs/heads/${branch}`);
   createPullRequest(DEVELOP, branch, bumpPullRequest(version));
-  try {
-    gh('pr', 'merge', branch, '--auto', '--merge');
-  } catch {
-    console.log('::warning::Auto-merge could not be turned on, so this pull request needs a merge by hand.');
-  }
+  mergeByItself(branch);
   return undefined;
 }
 
@@ -132,8 +138,8 @@ function openReleasePullRequest(version, open, branches) {
 function afterDevelop() {
   requireAutomationToken();
   const tags = tagsOnRepo();
-  const last = tags.at(-1);
-  const branches = mergedBranches(last ? lines(git('log', '--merges', '--format=%s', `v${last}..HEAD`)) : []);
+  // Only what main does not have yet: something that came straight to main needs no release for itself.
+  const branches = mergedBranches(lines(git('log', '--merges', '--format=%s', `origin/${MAIN}..HEAD`)), env('GITHUB_REPOSITORY').split('/')[0]);
   const plan = planDevelop({ version: manifestVersion(workDir), tags, branches });
   const open = openPullRequests();
 
@@ -235,6 +241,19 @@ function publish() {
   return undefined;
 }
 
+/**
+ * Runs on each push to main. A release leaves main with nothing develop lacks, so a difference means
+ * something came straight to main, and work branches would miss it.
+ */
+function syncDevelop() {
+  requireAutomationToken();
+  if (!git('diff', '--name-only', `origin/${DEVELOP}...HEAD`)) return console.log(`${DEVELOP} has everything in ${MAIN}.`);
+  const [open] = ghJson('pr', 'list', '--head', MAIN, '--base', DEVELOP, '--state', 'open', '--json', 'number');
+  if (open) return console.log(`Pull request #${open.number} is already bringing ${MAIN} back.`);
+  mergeByItself(createPullRequest(DEVELOP, MAIN, syncPullRequest()));
+  return undefined;
+}
+
 /** The maintainer keeps a branch at the latest release. Without force, this only ever moves it forward. */
 function moveLatestBranch() {
   if (!remoteBranches(`refs/heads/${LATEST}`).length) return;
@@ -249,6 +268,7 @@ const COMMANDS = {
   'draft-release': draftRelease,
   'open-main-pull-request': openMainPullRequest,
   publish,
+  'sync-develop': syncDevelop,
 };
 
 const command = COMMANDS[process.argv[2]];

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -31,6 +31,14 @@ test('the merged branch comes from what GitHub writes, for this repository and f
     "Merge branch 'main' into feat/x",
     'Show official Defesa Civil alerts',
   ]), ['feat/choose-exact-place', 'fix/typo']);
+});
+
+test('bringing main back is not new work, but a fork whose branch is called main is', () => {
+  assert.deepEqual(mergedBranches([
+    'Merge pull request #10 from Weslley08/main',
+    'Merge pull request #11 from someone-else/main',
+  ], 'Weslley08'), ['main']);
+  assert.deepEqual(planDevelop({ version: '1.4.0', tags: ['1.4.0'], branches: mergedBranches(['Merge pull request #10 from Weslley08/main'], 'Weslley08') }), { idle: true });
 });
 
 test('a feature raises the second number and anything else the third', () => {
@@ -188,6 +196,13 @@ test('every work prefix opens a pull request, and only those', () => {
   const workflow = readFileSync(join(root, '.github', 'workflows', 'open-pull-request.yml'), 'utf8');
   const listed = [...workflow.matchAll(/^\s+- ([a-z]+)\/\*\*$/gm)].map(([, prefix]) => prefix);
   assert.deepEqual(listed, WORK_PREFIXES);
+});
+
+test('a missing token reaches the step that names it, instead of stopping at checkout', () => {
+  for (const file of readdirSync(join(root, '.github', 'workflows'))) {
+    const workflow = readFileSync(join(root, '.github', 'workflows', file), 'utf8');
+    assert.doesNotMatch(workflow, /^\s+token: \$\{\{ secrets\.AUTOMATION_TOKEN \}\}$/m, file);
+  }
 });
 
 test('the bump branches stay out of the workflow that opens pull requests, because the bump opens its own', () => {

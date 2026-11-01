@@ -118,6 +118,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 - **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the zip and the technical details, keeps the text you wrote above them, and clears the boxes. No tag has to move, because a draft has none yet.
 - **A problem after publishing:** the next version fixes it. A number is never reused, and an older version is never published after a newer one, because the Community Store orders by publish date and would show it as current.
 - **A release that stayed a draft after the merge:** the Publish job fails if the top of the notes was not written. Write it and run that job again.
+- **Something that reached `main` directly:** a pull request from `main` to `develop` opens and merges itself, and asks for no new version.
 - **Merge commits only:** the repository allows no other kind, because the flow reads the merged branches from them and the release branch must end up inside `main`.
 - **Dependabot:** its security updates always open against `main`, whatever the configuration says, so change their base to `develop`.
 

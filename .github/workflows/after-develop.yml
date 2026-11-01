@@ -20,8 +20,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          # This job pushes the bump/ branches.
-          token: ${{ secrets.AUTOMATION_TOKEN }}
+          # This job pushes the bump/ branches. Without the secret, checkout would stop with its own
+          # message, and the next step is the one that names what to set.
+          token: ${{ secrets.AUTOMATION_TOKEN || github.token }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc

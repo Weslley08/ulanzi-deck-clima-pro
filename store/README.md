@@ -51,7 +51,7 @@ Open source, Apache-2.0.
 Everything above is for the official marketplace. Clima Pro is also on the unofficial [Ulanzi Community Store](https://ulanzicommunitystore.narlei.com), listed since 2026-11-01 ([issue #102](https://github.com/narlei/ulanzicommunitystore/issues/102)), so nothing needs submitting there again. Sources read for this: its `PUBLISHING.md`, `packages/catalog/bin/validate-pr.mjs` and `build-catalog.mjs`, and `pluginText` in its site and app. Read them again if the listing looks wrong, because they change.
 
 - **Every release marked `latest` reaches its users as an update**, with no further review. Test before marking one.
-- It rebuilds its catalog at least once a day from the default branch and the `latest` release. Text and art changes need no release, only a merge to `main`.
+- It rebuilds its catalog at least once a day from the default branch and the `latest` release. So text and art changes take effect once they are on `main`, and only a release branch reaches `main`, so they go out with the next release.
 - [`store.json`](../store.json) at the root holds the cover, screenshots, long description and tags. A referenced image that does not exist rejects the listing, and a test checks that.
 - **The store only shows `longDescription` in languages the plugin has no file for.** It knows `en`, `pt_BR`, `pt` and Chinese, and our `pt_PT.json` does not count as any of them. So:
   - In English it shows `Description` from `en.json`, which is why that text carries the credit and the short form of the disclaimer. The limit of 300 characters leaves no room for all of it.
