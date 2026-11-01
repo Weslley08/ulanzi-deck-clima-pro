@@ -54,7 +54,7 @@ export class Theme {
       ['thermo', view.feels, ''],
       ['drop', view.humidity, '%'],
       ['wind', view.wind, view.windUnit],
-      ['umbrella', view.rainChance, '%'],
+      ['umbrella', view.precip, view.precipUnit],
     ];
   }
 
@@ -76,22 +76,6 @@ export class Theme {
       const unitWidth = unitFit ? measure(font, unitFit.text, unitFit.size) + 4 : 0;
       out += this.label(view, value, 133 - unitWidth, baseline, 72, 25, { anchor: 'end', minSize: 16 });
       if (unitFit) out += text(font, unitFit.text, 133, baseline, unitFit.size, { anchor: 'end', fill: pal.sub });
-    });
-    return out;
-  }
-
-  forecast(view) {
-    const pal = this.palette(view);
-    const centers = [25, 72, 119];
-    const column = 44;
-    let out = '';
-    view.days.slice(0, 3).forEach((day, i) => {
-      const x = centers[i];
-      out += this.label(view, day.label, x, 24, column, 14, { anchor: 'middle', minSize: 10, fill: pal.sub });
-      out += this.icon(view, day.condition, true, x - 19, 30, 38);
-      out += this.label(view, day.max, x, 92, column, 20, { anchor: 'middle', minSize: 12 });
-      out += this.label(view, day.min, x, 112, column, 16, { anchor: 'middle', minSize: 11, fill: pal.sub });
-      out += this.label(view, day.rain, x, 132, column, 13, { anchor: 'middle', minSize: 10, fill: pal.accent ?? pal.sub });
     });
     return out;
   }
@@ -127,11 +111,4 @@ export class Theme {
     const { bg, accent, ink } = this.palette(view);
     return `<circle cx="134" cy="10" r="5" fill="${accent ?? ink}" stroke="${bg ?? '#000'}" stroke-width="1.5"/>`;
   }
-}
-
-/** Upward or downward triangle used next to the daily high and low. */
-export function arrow(x, y, up, fill) {
-  return up
-    ? `<path d="M${x} ${y}l5.5-9 5.5 9Z" fill="${fill}"/>`
-    : `<path d="M${x} ${y - 9}l5.5 9 5.5-9Z" fill="${fill}"/>`;
 }

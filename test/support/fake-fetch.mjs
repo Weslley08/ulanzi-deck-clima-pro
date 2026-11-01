@@ -3,7 +3,7 @@
 // user's API key at another host. Each request is appended to FAKE_WEATHER_LOG.
 import { appendFileSync, readFileSync } from 'node:fs';
 
-const fixtures = JSON.parse(readFileSync(new URL('../fixtures/forecast.json', import.meta.url), 'utf8'));
+const fixtures = JSON.parse(readFileSync(new URL('../fixtures/current.json', import.meta.url), 'utf8'));
 const log = process.env.FAKE_WEATHER_LOG;
 
 const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });

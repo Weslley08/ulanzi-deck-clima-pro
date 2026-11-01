@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { THEME_IDS } from '../com.ulanzi.climapro.ulanziPlugin/plugin/render/themes/index.js';
-import { REFRESH_MINUTES, SCREENS, normalizeApiKey, normalizeSettings } from '../com.ulanzi.climapro.ulanziPlugin/plugin/settings.js';
+import { SCREENS, normalizeApiKey, normalizeSettings } from '../com.ulanzi.climapro.ulanziPlugin/plugin/settings.js';
 
 const pluginDir = fileURLToPath(new URL('../com.ulanzi.climapro.ulanziPlugin/', import.meta.url));
 const read = (path) => readFileSync(join(pluginDir, path), 'utf8');
@@ -94,7 +94,7 @@ test('the English file repeats the action name of the manifest', () => {
   assert.equal(en.Description, manifest.Description);
 });
 
-test('the inspector offers exactly the themes, screens and intervals the code accepts', () => {
+test('the inspector offers exactly the themes and screens the code accepts', () => {
   const values = (name) => [...inspectorHtml.matchAll(new RegExp(`name="${name}"[^>]*value="([^"]+)"`, 'g'))].map((m) => m[1]);
   assert.deepEqual(values('theme'), THEME_IDS);
   const selectValues = (name) => {
@@ -102,7 +102,6 @@ test('the inspector offers exactly the themes, screens and intervals the code ac
     return [...block.matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
   };
   assert.deepEqual(selectValues('screen'), SCREENS);
-  assert.deepEqual(selectValues('refresh').map(Number), REFRESH_MINUTES);
   assert.deepEqual(selectValues('unit'), ['c', 'f']);
 });
 
@@ -131,12 +130,14 @@ test('every string marked in the inspector can be translated', () => {
 });
 
 test('settings from an old version or a bad host value fall back to defaults', () => {
-  const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', refresh: '7', location: 42, label: null });
-  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', label: '', unit: 'c', screen: 'now', refresh: 30 });
+  const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', location: 42, label: null });
+  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', label: '', unit: 'c', screen: 'now' });
 });
 
-test('refresh arrives from the form as a string', () => {
-  assert.equal(normalizeSettings({ refresh: '15' }).refresh, 15);
+test('a key saved by 1.0.0 with the forecast screen or a refresh setting still loads', () => {
+  const settings = normalizeSettings({ screen: 'forecast', refresh: '60' });
+  assert.equal(settings.screen, 'now');
+  assert.equal(settings.refresh, undefined);
 });
 
 test('only well-formed API keys are accepted', () => {

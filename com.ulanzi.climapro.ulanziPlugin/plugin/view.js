@@ -8,27 +8,13 @@ const degrees = (value) => {
   const n = round(value);
   return n === null ? DASH : `${minusSign(n)}°`;
 };
-const percent = (value) => {
-  const n = round(value);
-  return n === null ? DASH : `${n}%`;
-};
+// Drizzle is a fraction of a millimetre, so whole numbers would read as dry.
+const amount = (value, decimals) => (Number.isFinite(value) ? String(Number(value.toFixed(decimals))) : DASH);
 
-export function weekdayLabel(dateEpoch, language) {
-  const date = new Date(dateEpoch * 1000);
-  const format = (locale) => new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(date);
-  let label;
-  try {
-    label = format(String(language ?? 'en').replace('_', '-'));
-  } catch {
-    label = format('en');
-  }
-  return label.replace(/[.,]/g, '').toUpperCase().slice(0, 3);
-}
-
-export function buildWeatherView(weather, settings, screen, language, stale = false) {
+export function buildWeatherView(weather, settings, screen, stale = false) {
   const fahrenheit = settings.unit === 'f';
   const pick = (metric, imperial) => (fahrenheit ? imperial : metric);
-  const { current, today, days, location } = weather;
+  const { current, location } = weather;
   const wind = round(pick(current.windKph, current.windMph));
   const temp = round(pick(current.tempC, current.tempF));
 
@@ -46,16 +32,8 @@ export function buildWeatherView(weather, settings, screen, language, stale = fa
     humidity: round(current.humidity) ?? DASH,
     wind: wind ?? DASH,
     windUnit: pick('km/h', 'mph'),
-    rainChance: round(today?.rainChance) ?? DASH,
-    max: degrees(pick(today?.maxC, today?.maxF)),
-    min: degrees(pick(today?.minC, today?.minF)),
-    days: days.map((day) => ({
-      label: weekdayLabel(day.dateEpoch, language),
-      condition: day.condition,
-      max: degrees(pick(day.maxC, day.maxF)),
-      min: degrees(pick(day.minC, day.minF)),
-      rain: percent(day.rainChance),
-    })),
+    precip: amount(pick(current.precipMm, current.precipIn), pick(1, 2)),
+    precipUnit: pick('mm', 'in'),
     stale,
   };
 }

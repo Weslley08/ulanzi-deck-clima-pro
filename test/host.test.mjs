@@ -121,7 +121,7 @@ test('saving a key from the inspector starts the weather', async () => {
   send({ cmd: 'didReceiveGlobalSettings', uuid: PLUGIN_UUID, key: '', actionid: '', settings: { apiKey: API_KEY } });
   await waitFor(iconFor('0_0'));
   const [line] = requests();
-  assert.ok(line.startsWith('/v1/forecast.json auto:ip'), line);
+  assert.ok(line.startsWith('/v1/current.json auto:ip'), line);
   assert.ok(line.endsWith(API_KEY));
 });
 

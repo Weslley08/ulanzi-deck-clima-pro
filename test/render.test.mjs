@@ -4,7 +4,7 @@ import { sampleMessage, sampleView } from '../scripts/lib/samples.mjs';
 import { faceSvg, renderFace, svgToPng } from '../com.ulanzi.climapro.ulanziPlugin/plugin/render/renderer.js';
 import { DEFAULT_THEME, THEME_IDS, getTheme } from '../com.ulanzi.climapro.ulanziPlugin/plugin/render/themes/index.js';
 import { CONDITIONS } from '../com.ulanzi.climapro.ulanziPlugin/plugin/conditions.js';
-import { buildWeatherView, weekdayLabel } from '../com.ulanzi.climapro.ulanziPlugin/plugin/view.js';
+import { buildWeatherView } from '../com.ulanzi.climapro.ulanziPlugin/plugin/view.js';
 import { SIZE } from '../com.ulanzi.climapro.ulanziPlugin/plugin/render/theme.js';
 
 const pngSize = (bytes) => {
@@ -21,7 +21,7 @@ test('there are themes to choose from and the first is the default', () => {
 
 for (const theme of THEME_IDS) {
   test(`${theme}: every screen renders to a key-sized PNG`, async () => {
-    for (const screen of ['now', 'details', 'forecast']) {
+    for (const screen of ['now', 'details']) {
       const png = await svgToPng(await faceSvg(sampleView(theme, screen)));
       assert.deepEqual(pngSize(png), [SIZE, SIZE], screen);
     }
@@ -42,11 +42,9 @@ for (const theme of THEME_IDS) {
     const weather = {
       location: { name: '' },
       current: { condition: 'cloudy', isDay: true },
-      today: null,
-      days: [],
     };
-    for (const screen of ['now', 'details', 'forecast']) {
-      const svg = await faceSvg(buildWeatherView(weather, { theme, unit: 'c' }, screen, 'en'));
+    for (const screen of ['now', 'details']) {
+      const svg = await faceSvg(buildWeatherView(weather, { theme, unit: 'c' }, screen));
       assert.ok(!svg.includes('undefined'), screen);
       assert.ok(!svg.includes('NaN'), screen);
       await svgToPng(svg);
@@ -62,9 +60,9 @@ for (const theme of THEME_IDS) {
   });
 
   test(`${theme}: very long names and extreme values still render`, async () => {
-    const svg = await faceSvg(sampleView(theme, 'now', { city: 'Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch', tempC: -40, maxC: -30, minC: -45 }));
+    const svg = await faceSvg(sampleView(theme, 'now', { city: 'Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch', tempC: -40, feelsLikeC: -55, humidity: 100 }));
     await svgToPng(svg);
-    const hot = await faceSvg(sampleView(theme, 'details', { tempC: 50, feelsLikeC: 58, windKph: 212, humidity: 100, rainChance: 100 }));
+    const hot = await faceSvg(sampleView(theme, 'details', { tempC: 50, feelsLikeC: 58, windKph: 212, humidity: 100, precipMm: 123.4 }));
     await svgToPng(hot);
   });
 }
@@ -88,11 +86,13 @@ test('a custom name replaces the place from the API', () => {
   assert.equal(sampleView('sky', 'now', {}, { label: 'Casa' }).city, 'Casa');
 });
 
-test('weekday labels follow the host language', () => {
-  const monday = Date.UTC(2026, 10, 2) / 1000;
-  assert.equal(weekdayLabel(monday, 'en'), 'MON');
-  assert.equal(weekdayLabel(monday, 'pt_PT'), 'SEG');
-  assert.equal(weekdayLabel(monday, 'not a language'), 'MON');
+test('precipitation keeps the fractions that matter, in the chosen unit', () => {
+  assert.equal(sampleView('sky', 'details', { precipMm: 0.4 }).precip, '0.4');
+  assert.equal(sampleView('sky', 'details', { precipMm: 0.4 }).precipUnit, 'mm');
+  assert.equal(sampleView('sky', 'details', { precipMm: 0 }).precip, '0');
+  const imperial = sampleView('sky', 'details', { precipMm: 2.54 }, { unit: 'f' });
+  assert.equal(imperial.precip, '0.1');
+  assert.equal(imperial.precipUnit, 'in');
 });
 
 test('the key image is a full data URI, or the device ignores it', async () => {

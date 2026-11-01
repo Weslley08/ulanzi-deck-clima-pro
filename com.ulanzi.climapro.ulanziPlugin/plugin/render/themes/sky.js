@@ -1,4 +1,4 @@
-import { Theme, SIZE, arrow } from '../theme.js';
+import { Theme, SIZE } from '../theme.js';
 
 // [top, bottom] per condition. White text must stay readable on both stops (see theme tests).
 const DAY = {
@@ -89,11 +89,10 @@ export default class SkyTheme extends Theme {
   }
 
   now(view) {
-    const { ink } = this.palette(view);
     return this.label(view, view.city, 11, 24, 122, 17, { minSize: 12 })
       + this.bigTemp(view, view.temp, 9, 81, 108, 60)
       + this.icon(view, view.condition, view.isDay, 78, 76, 62)
-      + arrow(11, 112, true, ink) + this.label(view, view.max, 26, 112, 50, 18, { minSize: 12 })
-      + arrow(11, 133, false, ink) + this.label(view, view.min, 26, 133, 50, 18, { minSize: 12 });
+      + this.detailGlyph(view, 'thermo', 8, 97, 18) + this.label(view, view.feels, 28, 112, 50, 18, { minSize: 12 })
+      + this.detailGlyph(view, 'drop', 8, 118, 18) + this.label(view, `${view.humidity}%`, 28, 133, 50, 18, { minSize: 12 });
   }
 }

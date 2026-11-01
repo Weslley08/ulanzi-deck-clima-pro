@@ -22,7 +22,8 @@ Run everything on Node 20.12.2 (`.nvmrc`), the version Studio runs plugins on. `
 - Key images must be full data URIs. Devices silently ignore bare base64, and Studio's preview hides the bug.
 - Handle only `run` for presses: the D200H fires `keydown` and `run` for one touch.
 - Current conditions may not be kept over 60 minutes (WeatherAPI.com terms). The credit and disclaimer in the panel and the store text are also required by those terms.
+- The plugin shows current conditions only, and `last_updated` sets when it asks next, so users get no refresh setting. The maintainer asked for both.
 
 ## What has not been verified
 
-Nothing has run in the real Ulanzi Studio or on a device, or against the live API with a valid key. `docs/VERIFY.md` is the checklist for the first real run. `npm run test:live` needs a key.
+Nothing has run in the real Ulanzi Studio or on a device, or against the live API with a valid key. `docs/VERIFY.md` is the checklist for the first real run. `npm run test:live` and `npm run watch:updates` need a key. The 15 minute step in `last_updated` comes from WeatherAPI.com's "every 10-15 minute" and 97 saved replies in public repositories, not from watching the live API.

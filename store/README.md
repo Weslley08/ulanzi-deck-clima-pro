@@ -21,11 +21,11 @@ Before each submission, read the current guidelines and the form again, because 
 
 **Summary (300 characters at most):**
 
-Live weather on your keys, in the theme you choose. Six themes, current conditions, details and a 3-day forecast. Uses your own free WeatherAPI.com key.
+Live weather on your keys, in the theme you choose. Six themes, with the latest conditions and details. Uses your own free WeatherAPI.com key.
 
 **Details (1000 characters at most):**
 
-Show current conditions, details and a 3-day forecast on your deck, with six themes to choose from: Sky, Minimal, Thermal, LCD, Neon and Almanac. Press a key to switch screens.
+Show the latest conditions and details on your deck, with six themes to choose from: Sky, Minimal, Thermal, LCD, Neon and Almanac. Press a key to switch screens.
 
 Setup: create a free key at weatherapi.com, paste it into the settings panel, and pick a place and a theme.
 

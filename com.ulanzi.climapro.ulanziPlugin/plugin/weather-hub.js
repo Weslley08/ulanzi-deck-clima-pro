@@ -9,28 +9,34 @@ const RETRY_BASE_MS = MINUTE;
 const RETRY_MAX_MS = 30 * MINUTE;
 // WeatherAPI.com terms: current conditions may be cached for at most 60 minutes.
 export const MAX_DATA_AGE_MS = 60 * MINUTE;
-// Refreshing just before that limit keeps an hourly key from flashing "loading" every hour.
-const LONGEST_INTERVAL_MS = MAX_DATA_AGE_MS - 5 * MINUTE;
+// WeatherAPI.com says current conditions update every 10 to 15 minutes, and saved replies show
+// last_updated on :00, :15, :30 and :45. Asking just after the next step is due gets new data
+// soonest for the fewest calls, so the API sets the pace and there is no setting for it.
+export const UPDATE_DUE_MS = 16 * MINUTE;
+export const RECHECK_MS = 3 * MINUTE;
+// This far past the step the place has stopped updating, so chasing it would only burn quota.
+export const LATE_AGE_MS = 30 * MINUTE;
+export const LATE_RECHECK_MS = 15 * MINUTE;
 
 // These cannot fix themselves. Retrying would only burn the user's quota.
 const HALTING_KINDS = new Set(['auth', 'location']);
 
+function nextCheckIn(ageMs) {
+  if (ageMs === null || ageMs === undefined) return UPDATE_DUE_MS;
+  if (ageMs >= LATE_AGE_MS) return LATE_RECHECK_MS;
+  return Math.max(UPDATE_DUE_MS - ageMs, RECHECK_MS);
+}
+
 class Subscription {
-  constructor(hub, feed, { intervalMs, active, onUpdate }) {
+  constructor(hub, feed, { active, onUpdate }) {
     this.hub = hub;
     this.feed = feed;
-    this.intervalMs = intervalMs;
     this.active = active;
     this.onUpdate = onUpdate;
   }
 
   setActive(active) {
     this.active = active;
-    this.hub.reschedule(this.feed);
-  }
-
-  setIntervalMs(intervalMs) {
-    this.intervalMs = intervalMs;
     this.hub.reschedule(this.feed);
   }
 
@@ -53,14 +59,14 @@ class Subscription {
 export class WeatherHub {
   #feeds = new Map();
   #apiKey = null;
-  #fetchForecast;
+  #fetchCurrent;
   #now;
   #setTimer;
   #clearTimer;
   #log;
 
-  constructor({ fetchForecast, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, log = () => {} }) {
-    this.#fetchForecast = fetchForecast;
+  constructor({ fetchCurrent, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, log = () => {} }) {
+    this.#fetchCurrent = fetchCurrent;
     this.#now = now;
     this.#setTimer = setTimer;
     this.#clearTimer = clearTimer;
@@ -92,7 +98,7 @@ export class WeatherHub {
     const id = query.toLowerCase();
     let feed = this.#feeds.get(id);
     if (!feed) {
-      feed = { id, query, subs: new Set(), data: null, error: null, fetchedAt: null, retryAt: null, failures: 0, halted: false, loading: false, lastAttempt: 0, timer: null, expiry: null };
+      feed = { id, query, subs: new Set(), data: null, error: null, nextAt: null, retryAt: null, failures: 0, halted: false, loading: false, lastAttempt: 0, timer: null, expiry: null };
       this.#feeds.set(id, feed);
     }
     const subscription = new Subscription(this, feed, options);
@@ -104,10 +110,8 @@ export class WeatherHub {
   reschedule(feed) {
     this.#clear(feed, 'timer');
     if (!this.#apiKey || feed.halted || feed.loading) return;
-    const intervals = [...feed.subs].filter((sub) => sub.active).map((sub) => sub.intervalMs);
-    if (!intervals.length) return;
-    const due = feed.retryAt ?? (feed.fetchedAt === null ? 0 : feed.fetchedAt + Math.min(...intervals, LONGEST_INTERVAL_MS));
-    const wait = due - this.#now();
+    if (![...feed.subs].some((sub) => sub.active)) return;
+    const wait = (feed.retryAt ?? feed.nextAt ?? 0) - this.#now();
     if (wait <= 0) {
       this.#load(feed);
       return;
@@ -143,7 +147,7 @@ export class WeatherHub {
     let data = null;
     let failure = null;
     try {
-      data = await this.#fetchForecast(apiKey, feed.query);
+      data = await this.#fetchCurrent(apiKey, feed.query);
     } catch (error) {
       failure = error;
     }
@@ -159,11 +163,11 @@ export class WeatherHub {
   }
 
   #recordSuccess(feed, data) {
-    Object.assign(feed, { data, error: null, fetchedAt: this.#now(), retryAt: null, failures: 0, halted: false });
+    Object.assign(feed, { data, error: null, nextAt: this.#now() + nextCheckIn(data?.current?.ageMs), retryAt: null, failures: 0, halted: false });
     this.#clear(feed, 'expiry');
     feed.expiry = this.#setTimer(() => {
       feed.expiry = null;
-      Object.assign(feed, { data: null, fetchedAt: null });
+      Object.assign(feed, { data: null, nextAt: null });
       this.#notify(feed);
       this.reschedule(feed);
     }, MAX_DATA_AGE_MS);
@@ -186,7 +190,7 @@ export class WeatherHub {
   #forget(feed) {
     this.#clear(feed, 'timer');
     this.#clear(feed, 'expiry');
-    Object.assign(feed, { data: null, error: null, fetchedAt: null, retryAt: null, failures: 0, halted: false, lastAttempt: 0 });
+    Object.assign(feed, { data: null, error: null, nextAt: null, retryAt: null, failures: 0, halted: false, lastAttempt: 0 });
   }
 
   #clear(feed, name) {

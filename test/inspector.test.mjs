@@ -196,13 +196,16 @@ test('the panel appears in the host language', options, async () => {
 });
 
 test('saved settings fill the form', options, async () => {
-  fromHost({ cmd: 'paramfromapp', param: { theme: 'neon', location: 'Rio de Janeiro', label: 'Casa', screen: 'details', unit: 'f', refresh: 60 } });
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'neon', location: 'Rio de Janeiro', label: 'Casa', screen: 'details', unit: 'f' } });
   await until(`document.querySelector('[name=theme]:checked').value === 'neon'`);
   assert.equal(await run(`document.querySelector('#location').value`), 'Rio de Janeiro');
   assert.equal(await run(`document.querySelector('#label').value`), 'Casa');
   assert.equal(await run(`document.querySelector('#screen').value`), 'details');
   assert.equal(await run(`document.querySelector('#unit').value`), 'f');
-  assert.equal(await run(`document.querySelector('#refresh').value`), '60');
+});
+
+test('the panel offers no choice of how often to update', options, async () => {
+  assert.equal(await run(`document.querySelector('#refresh')`), null);
 });
 
 test('the saved key fills its field, hidden', options, async () => {
@@ -270,8 +273,8 @@ test('choosing a theme saves on the spot, with every other setting intact and no
 });
 
 test('a press on the key updates the panel', options, async () => {
-  fromHost({ cmd: 'paramfromplugin', param: { theme: 'lcd', location: 'Rio de Janeiro', label: 'Casa', screen: 'forecast', unit: 'f', refresh: 60 } });
-  await until(`document.querySelector('#screen').value === 'forecast'`);
+  fromHost({ cmd: 'paramfromplugin', param: { theme: 'lcd', location: 'Rio de Janeiro', label: 'Casa', screen: 'now', unit: 'f' } });
+  await until(`document.querySelector('#screen').value === 'now'`);
 });
 
 test('typing a place saves it and asks for suggestions', options, async () => {

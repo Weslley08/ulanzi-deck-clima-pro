@@ -3,7 +3,6 @@ import { conditionFromCode } from './conditions.js';
 
 const BASE_URL = 'https://api.weatherapi.com/v1';
 const TIMEOUT_MS = 10_000;
-const FORECAST_DAYS = 3; // The most the free plan returns.
 const MAX_SUGGESTIONS = 5;
 
 export const AUTO_LOCATION = 'auto:ip';
@@ -53,26 +52,16 @@ const toNumber = (value) => {
   return Number.isFinite(n) ? n : null;
 };
 
-function parseDay(entry) {
-  const { day = {} } = entry;
-  const rain = toNumber(day.daily_chance_of_rain);
-  const snow = toNumber(day.daily_chance_of_snow);
-  return {
-    dateEpoch: entry.date_epoch,
-    condition: conditionFromCode(day.condition?.code),
-    maxC: toNumber(day.maxtemp_c),
-    maxF: toNumber(day.maxtemp_f),
-    minC: toNumber(day.mintemp_c),
-    minF: toNumber(day.mintemp_f),
-    // The umbrella stands for any precipitation, so a snowy day should not read as dry.
-    rainChance: rain === null && snow === null ? null : Math.max(rain ?? 0, snow ?? 0),
-  };
+/** How old the data was when the API answered. Both times are the API's, so a wrong clock here cannot skew it. */
+function ageMs(updatedEpoch, nowEpoch) {
+  if (updatedEpoch === null || nowEpoch === null || nowEpoch < updatedEpoch) return null;
+  return (nowEpoch - updatedEpoch) * 1000;
 }
 
-export function parseForecast(body) {
-  const { location, current, forecast } = body ?? {};
+export function parseCurrent(body) {
+  const { location, current } = body ?? {};
   if (!location || !current) throw new WeatherError('server');
-  const days = (forecast?.forecastday ?? []).map(parseDay);
+  const updatedEpoch = toNumber(current.last_updated_epoch);
   return {
     location: { name: String(location.name ?? ''), region: String(location.region ?? ''), country: String(location.country ?? '') },
     current: {
@@ -85,16 +74,16 @@ export function parseForecast(body) {
       humidity: toNumber(current.humidity),
       windKph: toNumber(current.wind_kph),
       windMph: toNumber(current.wind_mph),
+      precipMm: toNumber(current.precip_mm),
+      precipIn: toNumber(current.precip_in),
+      updatedEpoch,
+      ageMs: ageMs(updatedEpoch, toNumber(location.localtime_epoch)),
     },
-    today: days[0] ?? null,
-    days,
   };
 }
 
-export async function fetchForecast(apiKey, query) {
-  // hour= trims the response from hundreds of hourly entries to one per day; we use none of them.
-  const body = await request('forecast.json', { key: apiKey, q: query, days: FORECAST_DAYS, hour: 12, aqi: 'no', alerts: 'no' });
-  return parseForecast(body);
+export async function fetchCurrent(apiKey, query) {
+  return parseCurrent(await request('current.json', { key: apiKey, q: query, aqi: 'no' }));
 }
 
 export async function searchLocations(apiKey, query) {

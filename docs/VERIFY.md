@@ -26,17 +26,24 @@ This has never run on a real host, because the official simulator crashes on it.
 ## Display
 
 - [ ] The weather appears **on the device**, not just in Studio's preview
-- [ ] Each theme looks right on the device, for all three screens
+- [ ] Each theme looks right on the device, for both screens
 - [ ] Text is sharp and big enough at arm's length, on every theme
 - [ ] A long city name fits, and a place with accents (São Paulo, Reykjavík) draws correctly
-- [ ] Temperatures, wind and the day names look right in °C and °F
+- [ ] Temperatures, wind and precipitation look right in °C and °F
 
 ## Press
 
-- [ ] One press moves one screen: now, details, forecast, now
+- [ ] One press moves one screen: now, details, now
 - [ ] On the D200H, one touch still moves only one screen
 - [ ] The screen is kept after restarting Studio
 - [ ] The Screen selector in an open panel follows the press
+
+## Updates
+
+The polling relies on `last_updated` moving in steps of about 15 minutes. That comes from WeatherAPI.com's "every 10-15 minute" and from saved replies, not from watching the live API.
+
+- [ ] `WEATHERAPI_KEY=xxx npm run watch:updates` shows steps of about 15 minutes. If it does not, change `UPDATE_DUE_MS` in `weather-hub.js`
+- [ ] With a key on screen, the weather changes within a few minutes of `last_updated` moving
 
 ## Life cycle
 

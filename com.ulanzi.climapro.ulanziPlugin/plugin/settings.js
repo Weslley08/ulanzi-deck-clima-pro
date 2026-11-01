@@ -1,8 +1,7 @@
 // Settings arrive from the host as loose strings and may predate this version.
 import { DEFAULT_THEME, THEME_IDS } from './render/themes/index.js';
 
-export const SCREENS = ['now', 'details', 'forecast'];
-export const REFRESH_MINUTES = [15, 30, 60];
+export const SCREENS = ['now', 'details'];
 
 const MAX_TEXT = 80;
 const API_KEY = /^[A-Za-z0-9]{10,64}$/;
@@ -17,7 +16,6 @@ export function normalizeSettings(raw = {}) {
     label: cleanText(raw.label),
     unit: oneOf(raw.unit, ['c', 'f'], 'c'),
     screen: oneOf(raw.screen, SCREENS, SCREENS[0]),
-    refresh: oneOf(Number(raw.refresh), REFRESH_MINUTES, 30),
   };
 }
 

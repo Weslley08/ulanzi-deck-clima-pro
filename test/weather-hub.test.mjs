@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { WeatherHub, MANUAL_REFRESH_GAP_MS, MAX_DATA_AGE_MS, QUOTA_RETRY_MS } from '../com.ulanzi.climapro.ulanziPlugin/plugin/weather-hub.js';
+import { WeatherHub, LATE_AGE_MS, LATE_RECHECK_MS, MANUAL_REFRESH_GAP_MS, MAX_DATA_AGE_MS, QUOTA_RETRY_MS, RECHECK_MS, UPDATE_DUE_MS } from '../com.ulanzi.climapro.ulanziPlugin/plugin/weather-hub.js';
 
 const MINUTE = 60_000;
 const KEY = 'TESTKEY000000000';
 const DATA = { location: { name: 'X' } };
+const aged = (ageMs) => async () => ({ ...DATA, current: { ageMs } });
 
 /** A hub on a fake clock, so hours of polling run in milliseconds. */
 function harness({ apiKey = KEY, respond = async () => DATA } = {}) {
   const clock = { now: 0, timers: new Map(), next: 1 };
   const calls = [];
   const hub = new WeatherHub({
-    fetchForecast: async (key, query) => {
+    fetchCurrent: async (key, query) => {
       calls.push({ key, query });
       return harness.current(key, query);
     },
@@ -44,7 +45,7 @@ function harness({ apiKey = KEY, respond = async () => DATA } = {}) {
   };
   const watch = (location, options = {}) => {
     const updates = { count: 0 };
-    const sub = hub.subscribe(location, { intervalMs: 30 * MINUTE, active: true, onUpdate: () => { updates.count += 1; }, ...options });
+    const sub = hub.subscribe(location, { active: true, onUpdate: () => { updates.count += 1; }, ...options });
     return { sub, updates };
   };
   return { hub, calls, clock, advance, settle, watch, setRespond: (fn) => { harness.current = fn; } };
@@ -98,21 +99,80 @@ test('an empty location asks the API to detect it from the IP', async () => {
   assert.equal(calls[0].query, 'auto:ip');
 });
 
-test('polls at the interval while active', async () => {
-  const { calls, advance, settle, watch } = harness();
+test('asks again just after the next update is due', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(5 * MINUTE) });
   watch('rio');
   await settle();
-  await advance(90 * MINUTE);
-  assert.equal(calls.length, 4);
+  await advance(UPDATE_DUE_MS - 5 * MINUTE - 1);
+  assert.equal(calls.length, 1);
+  await advance(1);
+  assert.equal(calls.length, 2);
 });
 
-test('the shortest interval of the keys on screen wins', async () => {
-  const { calls, advance, settle, watch } = harness();
-  watch('rio', { intervalMs: 60 * MINUTE });
-  watch('rio', { intervalMs: 15 * MINUTE });
+test('data that just updated waits a whole step', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(0) });
+  watch('rio');
   await settle();
-  await advance(45 * MINUTE);
-  assert.equal(calls.length, 4);
+  await advance(UPDATE_DUE_MS - 1);
+  assert.equal(calls.length, 1);
+  await advance(1);
+  assert.equal(calls.length, 2);
+});
+
+test('an update that is late is checked again every few minutes, and no sooner', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(UPDATE_DUE_MS) });
+  watch('rio');
+  await settle();
+  await advance(RECHECK_MS - 1);
+  assert.equal(calls.length, 1);
+  await advance(1);
+  assert.equal(calls.length, 2);
+  await advance(RECHECK_MS);
+  assert.equal(calls.length, 3);
+});
+
+test('just before an update is due, the gap between calls still holds', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(UPDATE_DUE_MS - 1000) });
+  watch('rio');
+  await settle();
+  await advance(RECHECK_MS - 1);
+  assert.equal(calls.length, 1);
+});
+
+test('a place that has stopped updating does not burn the quota', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(LATE_AGE_MS) });
+  watch('rio');
+  await settle();
+  await advance(LATE_RECHECK_MS - 1);
+  assert.equal(calls.length, 1);
+  await advance(1);
+  assert.equal(calls.length, 2);
+});
+
+test('a reply with no age waits a whole step', async () => {
+  const { calls, advance, settle, watch } = harness({ respond: aged(null) });
+  watch('rio');
+  await settle();
+  await advance(UPDATE_DUE_MS - 1);
+  assert.equal(calls.length, 1);
+  await advance(1);
+  assert.equal(calls.length, 2);
+});
+
+test('an hour on screen costs what the API updates are worth', async () => {
+  // The first reply arrives 5 minutes after a step, and each later one just after the next step.
+  let first = true;
+  const { calls, advance, settle, watch } = harness({
+    respond: async () => {
+      const ageMs = first ? 5 * MINUTE : MINUTE;
+      first = false;
+      return { ...DATA, current: { ageMs } };
+    },
+  });
+  watch('rio');
+  await settle();
+  await advance(60 * MINUTE);
+  assert.ok(calls.length >= 4 && calls.length <= 5, `${calls.length} calls`);
 });
 
 test('stops polling while no key is on screen, and catches up on return', async () => {
@@ -174,7 +234,7 @@ test('network failures keep the last data, marked stale, and back off', async ()
   const { sub } = watch('rio');
   await settle();
   setRespond(fail('network'));
-  await advance(30 * MINUTE);
+  await advance(UPDATE_DUE_MS);
   assert.equal(calls.length, 2);
   assert.equal(sub.snapshot().stale, true);
   assert.deepEqual(sub.snapshot().data, DATA);
@@ -191,15 +251,15 @@ test('a recovery clears the stale mark and the backoff', async () => {
   const { sub } = watch('rio');
   await settle();
   setRespond(fail('network'));
-  await advance(30 * MINUTE);
+  await advance(UPDATE_DUE_MS);
   setRespond(async () => DATA);
   await advance(MINUTE);
   assert.equal(sub.snapshot().stale, false);
   assert.equal(sub.snapshot().error, null);
   const before = calls.length;
-  await advance(29 * MINUTE);
+  await advance(UPDATE_DUE_MS - 1);
   assert.equal(calls.length, before);
-  await advance(MINUTE);
+  await advance(1);
   assert.equal(calls.length, before + 1);
 });
 
@@ -227,11 +287,10 @@ test('with failures, stale data is still gone after 60 minutes', async () => {
   assert.equal(sub.snapshot().error.kind, 'network');
 });
 
-test('an hourly key refreshes before its data expires, so it never flashes loading', async () => {
+test('a key on screen refreshes before its data expires, so it never flashes loading', async () => {
   const { calls, advance, settle, watch } = harness();
   const seen = [];
   const { sub } = watch('rio', {
-    intervalMs: 60 * MINUTE,
     onUpdate: () => seen.push(sub?.snapshot().data ?? null),
   });
   await settle();
@@ -306,14 +365,14 @@ test('the log gets one line per kind of failure, never the key', async () => {
   const lines = [];
   const clock = { now: 0 };
   const hub = new WeatherHub({
-    fetchForecast: fail('network'),
+    fetchCurrent: fail('network'),
     now: () => clock.now,
     setTimer: () => 1,
     clearTimer: () => {},
     log: (line) => lines.push(line),
   });
   hub.setApiKey(KEY);
-  const sub = hub.subscribe('rio', { intervalMs: MINUTE, active: true, onUpdate: () => {} });
+  const sub = hub.subscribe('rio', { active: true, onUpdate: () => {} });
   for (let i = 0; i < 5; i += 1) await Promise.resolve();
   sub.setActive(false);
   assert.equal(lines.length, 1);

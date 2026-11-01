@@ -30,6 +30,7 @@ Open a pull request against `main`. CI runs the tests on Windows, macOS and Linu
 | `npm run measure` | CPU and memory use. Include the numbers if your change could affect them. |
 | `npm run check:secrets`, `check:sdk`, `audit` | The security checks CI runs. |
 | `WEATHERAPI_KEY=xxx npm run test:live` | Checks our assumptions against the real API, using your own key. |
+| `WEATHERAPI_KEY=xxx npm run watch:updates -- London 60` | Shows how often `last_updated` moves. Spends one call a minute of your plan. |
 
 ## Adding a theme
 
@@ -54,7 +55,7 @@ This is the easiest way to contribute. A theme is one file that draws SVG.
    }
    ```
 
-   That is enough for all three screens. Override `now`, `details`, `forecast` or `background` for your own layout.
+   That is enough for both screens. Override `now`, `details` or `background` for your own layout.
 2. Register it in `plugin/render/themes/index.js`.
 3. Add it to the gallery in `property-inspector/weather/inspector.html`, and its name to every language file.
 4. Run `npm run build:assets`, then look at your row in `docs/themes.png`.
@@ -67,7 +68,7 @@ Fonts must have a license that allows bundling, recorded in `THIRD_PARTY_NOTICES
 ## Rules the code depends on
 
 - **The API key stays out of logs, errors, URLs we print and per-key settings.** Only `weather-api.js` puts it in a URL. It is saved in global settings because a key's own settings could travel in a shared profile.
-- **Spend the user's machine and quota carefully.** Nothing polls while no key is on screen, keys showing one place share one request, and an unchanged image is not sent again.
+- **Spend the user's machine and quota carefully.** Nothing polls while no key is on screen, keys showing one place share one request, and an unchanged image is not sent again. The API's `last_updated` sets when to ask next, so there is no refresh setting.
 - **Weather data lives in memory for at most 60 minutes.** WeatherAPI.com's terms set that limit on current conditions.
 - **Every failed press calls `showAlert`.** The store guidelines require it.
 - **Do not edit `libs/` or `plugin/ulanzi-api/`.** They are verbatim copies of the Ulanzi SDK pinned in `sdk-lock.json`, and CI fails if they change. To update them, review the upstream diff, copy the files, run `node scripts/check-sdk.mjs --write`, and update the commits in the lock file.
