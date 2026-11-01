@@ -1,0 +1,56 @@
+# Clima Pro
+
+Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi Studio](https://www.ulanzi.com/pages/ulanzi-app), for the keys of the D200, D200H and D200X.
+
+**Status:** not released yet. It passes its automated tests, but has not run in the real Ulanzi Studio, on a device, or against the live API with a valid key. [docs/VERIFY.md](docs/VERIFY.md) lists what is still to be checked.
+
+![Six themes, each with current conditions, details, forecast and setup screens](docs/themes.png)
+
+- **Six themes:** Sky, Minimal, Thermal, LCD, Neon and Almanac. Each key can have its own.
+- **Three screens:** now, details (feels like, humidity, wind, chance of rain) and a 3-day forecast. Press the key to switch.
+- **Light on your machine:** no CPU use between updates, and no calls while the key is not on screen.
+- **Your own free key:** the plugin uses your WeatherAPI.com account, and your key and location go only to WeatherAPI.com.
+
+## Setup
+
+1. Install Clima Pro from the Ulanzi Studio marketplace, or download the zip from [Releases](https://github.com/Weslley08/ulanzi-deck-clima-pro/releases) and unzip it into the plugins folder:
+   - Windows: `%APPDATA%\Ulanzi\UlanziDeck\Plugins\`
+   - macOS: `~/Library/Application Support/Ulanzi/UlanziDeck/Plugins/`
+
+   Then restart Studio.
+2. Create a free key at [weatherapi.com](https://www.weatherapi.com/signup). Keep it private: it is tied to your account.
+3. Drag **Weather** onto a key and paste your key into the settings panel. You only do this once.
+4. Type a place, or leave it empty to detect it from your IP. Pick a theme.
+
+The panel and the messages on the key are available in English, Portuguese, Spanish and German. Keys draw the Latin alphabet only, so other scripts in a custom key name are left out.
+
+## What the key shows
+
+| On the key | Meaning | What to do |
+|---|---|---|
+| Add your API key | No key saved | Paste your key in the settings panel |
+| Check your API key | WeatherAPI.com rejected it | Copy it again from your account |
+| Location not found | No place matches | Try a nearby city, or a postcode |
+| API limit reached | The key used up its monthly calls | Wait for the next month, or choose a longer refresh |
+| No connection | WeatherAPI.com cannot be reached | It retries by itself |
+| Small dot in the corner | The last update failed, so the data is getting old | It retries by itself |
+
+## How much of your quota it uses
+
+Keys showing the same place share one request, and nothing is requested while no key is on screen. Kept on screen around the clock, one place uses about 1,500 calls a month at the default 30 minutes and 3,000 at 15 minutes. WeatherAPI.com's free plan listed 100,000 calls a month when this was written.
+
+## Weather data
+
+Weather data by [WeatherAPI.com](https://www.weatherapi.com/).
+
+Weather information displayed here is provided for general informational purposes only. Forecasts and conditions are probabilistic and may not be accurate for your specific location or time. This data should not be used as the sole basis for decisions involving personal safety, aviation, marine navigation, emergency planning, or other safety-critical activities. Always consult official meteorological services and relevant authorities for decisions where accuracy is critical.
+
+Your use of a WeatherAPI.com key is subject to [their terms](https://www.weatherapi.com/terms). This project is not affiliated with Ulanzi or WeatherAPI.com.
+
+## Contributing
+
+You do not need a device, and adding a theme takes one file. See [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[Apache-2.0](LICENSE). Bundled components are listed in [THIRD_PARTY_NOTICES.md](com.ulanzi.climapro.ulanziPlugin/THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Clima Pro</title>
+  <link rel="stylesheet" href="../../libs/css/uspi.css">
+  <link rel="stylesheet" href="./inspector.css">
+</head>
+<body>
+  <div class="uspi-wrapper hidden">
+
+    <!-- Outside the form on purpose: the API key is saved globally, never in a key's settings,
+         so it cannot leak through a shared or exported profile. -->
+    <div class="uspi-item">
+      <label class="uspi-item-label" for="apiKey" data-localize>API key</label>
+      <input class="uspi-item-value" id="apiKey" type="password" autocomplete="off" spellcheck="false" maxlength="64">
+    </div>
+    <div class="uspi-item field-note">
+      <div class="uspi-item-label empty"></div>
+      <div class="field-note-body">
+        <p class="tip info" id="status" role="status"></p>
+        <a href="#" id="getKey" data-localize>Get a free key</a>
+      </div>
+    </div>
+
+    <form id="property-inspector">
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="location" data-localize>Location</label>
+        <input class="uspi-item-value" id="location" name="location" type="text" list="suggestions" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Detect from my IP" data-localize="Detect from my IP">
+        <datalist id="suggestions"></datalist>
+      </div>
+
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="label" data-localize>Key name</label>
+        <input class="uspi-item-value" id="label" name="label" type="text" maxlength="80" autocomplete="off" placeholder="Optional" data-localize="Optional">
+      </div>
+
+      <div class="uspi-item theme-row">
+        <div class="uspi-item-label" data-localize>Theme</div>
+        <div class="theme-gallery uspi-item-value">
+          <label class="theme"><input type="radio" name="theme" value="sky" checked><img src="../../resources/themes/sky.png" alt=""><span data-localize>Sky</span></label>
+          <label class="theme"><input type="radio" name="theme" value="minimal"><img src="../../resources/themes/minimal.png" alt=""><span data-localize>Minimal</span></label>
+          <label class="theme"><input type="radio" name="theme" value="thermal"><img src="../../resources/themes/thermal.png" alt=""><span data-localize>Thermal</span></label>
+          <label class="theme"><input type="radio" name="theme" value="lcd"><img src="../../resources/themes/lcd.png" alt=""><span data-localize>LCD</span></label>
+          <label class="theme"><input type="radio" name="theme" value="neon"><img src="../../resources/themes/neon.png" alt=""><span data-localize>Neon</span></label>
+          <label class="theme"><input type="radio" name="theme" value="almanac"><img src="../../resources/themes/almanac.png" alt=""><span data-localize>Almanac</span></label>
+        </div>
+      </div>
+
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="screen" data-localize>Screen</label>
+        <select class="uspi-item-value select" id="screen" name="screen">
+          <option value="now" data-localize>Now</option>
+          <option value="details" data-localize>Details</option>
+          <option value="forecast" data-localize>Forecast</option>
+        </select>
+      </div>
+
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="unit" data-localize>Units</label>
+        <select class="uspi-item-value select" id="unit" name="unit">
+          <option value="c">°C · km/h</option>
+          <option value="f">°F · mph</option>
+        </select>
+      </div>
+
+      <div class="uspi-item">
+        <label class="uspi-item-label" for="refresh" data-localize>Refresh</label>
+        <select class="uspi-item-value select" id="refresh" name="refresh">
+          <option value="15" data-localize>Every 15 minutes</option>
+          <option value="30" selected data-localize>Every 30 minutes</option>
+          <option value="60" data-localize>Every hour</option>
+        </select>
+      </div>
+    </form>
+
+    <hr>
+    <div class="credit">
+      <span data-localize>Weather data by</span> <a href="#" id="attribution">WeatherAPI.com</a>
+    </div>
+    <p class="disclaimer" data-localize="disclaimer">Weather information displayed here is provided for general informational purposes only. Forecasts and conditions are probabilistic and may not be accurate for your specific location or time. This data should not be used as the sole basis for decisions involving personal safety, aviation, marine navigation, emergency planning, or other safety-critical activities. Always consult official meteorological services and relevant authorities for decisions where accuracy is critical.</p>
+  </div>
+
+  <script src="../../libs/js/constants.js"></script>
+  <script src="../../libs/js/eventEmitter.js"></script>
+  <script src="../../libs/js/timers.js"></script>
+  <script src="../../libs/js/utils.js"></script>
+  <script src="../../libs/js/ulanziApi.js"></script>
+  <script src="./inspector.js"></script>
+</body>
+</html>
