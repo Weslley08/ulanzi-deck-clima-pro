@@ -2,33 +2,34 @@ name: Release
 
 on:
   push:
-    tags: ['v*.*.*']
+    branches: ['release/v*']
 
 permissions:
   contents: read
 
+# A newer merge makes validating the older one pointless.
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   verify:
+    # Creating the branch from main is also a push, with nothing new to validate.
+    if: github.repository == 'Weslley08/ulanzi-deck-clima-pro' && !github.event.created && !github.event.deleted
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: The tag must match every version in the repository
+      - name: The branch must match every version in the repository
+        run: node scripts/flow.mjs check-release
         env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          version="${TAG#v}"
-          for file in com.ulanzi.climapro.ulanziPlugin/manifest.json; do
-            found=$(node -p "JSON.parse(require('fs').readFileSync('$file','utf8')).Version")
-            test "$found" = "$version" || { echo "$file says $found, tag says $version"; exit 1; }
-          done
-          for file in package.json com.ulanzi.climapro.ulanziPlugin/package.json; do
-            found=$(node -p "JSON.parse(require('fs').readFileSync('$file','utf8')).version")
-            test "$found" = "$version" || { echo "$file says $found, tag says $version"; exit 1; }
-          done
+          BRANCH: ${{ github.ref_name }}
       - run: npm run setup
       - run: npm run typecheck
       - run: npm test
@@ -43,24 +44,128 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-  publish:
+  smoke:
+    name: Smoke (${{ matrix.os }})
     needs: verify
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The systems Studio runs on, with the very zip that goes in the draft.
+        os: [windows-latest, macos-latest]
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm run setup
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: plugin-zip
           path: dist
-      - name: Create a draft release
+      - run: npm run verify:package
+
+  integrations:
+    name: Integrations
+    needs: verify
+    runs-on: ubuntu-latest
+    # The environment gives the key to release/v* branches only, so no other branch's workflow can read it.
+    environment: release-validation
+    env:
+      WEATHERAPI_KEY: ${{ secrets.WEATHERAPI_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: A missing key must stop here, because the live tests skip without one and look like a pass
+        run: |
+          if [ -z "$WEATHERAPI_KEY" ]; then
+            echo "::error::Set WEATHERAPI_KEY in the release-validation environment. See CONTRIBUTING.md."
+            exit 1
+          fi
+      - run: npm run setup
+      - run: npm run test:live
+      - run: npm run test:live:alerts
+
+  measure:
+    name: Measure
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm run setup
+      - shell: bash
+        run: |
+          mkdir measure
+          npm run --silent measure | tee measure/measure.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: measure
+          path: measure/measure.txt
+          if-no-files-found: error
+
+  draft:
+    name: Draft release
+    needs: [verify, smoke, integrations, measure]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: plugin-zip
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: measure
+          path: measure
+      - name: Create or replace the draft release
+        # A draft on purpose: a person tests it on a real deck before merging into main publishes it.
+        run: |
+          (cd dist && sha256sum ./*.zip > SHA256SUMS.txt)
+          node scripts/flow.mjs draft-release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        # A draft on purpose: a person tests it on a real deck, adds the numbers from
-        # npm run measure, and only then publishes it. CI cannot see the device.
-        run: |
-          cd dist
-          sha256sum ./*.zip > SHA256SUMS.txt
-          gh release create "$TAG" ./*.zip SHA256SUMS.txt --draft --verify-tag --title "$TAG" --generate-notes
+          BRANCH: ${{ github.ref_name }}
+
+  main-pull-request:
+    name: Open the pull request to main
+    needs: draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: measure
+          path: measure
+      - run: node scripts/flow.mjs open-main-pull-request
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
