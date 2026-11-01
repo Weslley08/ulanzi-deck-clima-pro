@@ -494,8 +494,7 @@ test('the repository setup protects each branch of the flow with the checks that
   assert.equal(input.repositoryId, 'R1');
   assert.equal(input.allowsDeletions, true, 'publishing deletes the release branch');
   assert.equal(input.requiresStrictStatusChecks, false);
-  assert.equal(input.requiredStatusCheckContexts.includes('CodeQL'), false, 'a required check that never reports would block the merge');
-  assert.ok(input.requiredStatusCheckContexts.includes('Branch flow'));
+  assert.deepEqual(input.requiredStatusCheckContexts, requiredIn(protections[0].at(-1)), 'every branch of the flow requires the same checks');
 
   const settings = callsTo(calls, 'api', '-X', 'PATCH')[0].at(-1);
   assert.deepEqual(settings, { allow_merge_commit: true, allow_squash_merge: false, allow_rebase_merge: false, allow_auto_merge: true });

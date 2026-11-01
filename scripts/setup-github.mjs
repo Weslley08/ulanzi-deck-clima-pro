@@ -6,9 +6,9 @@ const REPOSITORY = 'Weslley08/ulanzi-deck-clima-pro';
 const ENVIRONMENT = 'release-validation';
 const RELEASE_PATTERN = 'release/v*';
 
-const CHECKS = ['Test (windows-latest)', 'Test (macos-latest)', 'Test (ubuntu-latest)', 'Coverage', 'Package', 'Security', 'analyze', 'review', 'Branch flow'];
-// CodeQL's result only reports where it has analyzed the base. A release branch is not analyzed, and what it receives passed this on develop.
-const CHECKS_WITH_CODEQL = [...CHECKS, 'CodeQL'];
+// A required check that never reports blocks every merge, so these are the names seen on a real pull request.
+// CodeQL reports even where its base was never analyzed: it did on the first pull request to develop.
+const CHECKS = ['Test (windows-latest)', 'Test (macos-latest)', 'Test (ubuntu-latest)', 'Coverage', 'Package', 'Security', 'analyze', 'CodeQL', 'review', 'Branch flow'];
 
 const dryRun = process.argv.includes('--dry-run');
 
@@ -88,6 +88,6 @@ if (!environmentHasPolicy()) {
   change(`give that environment to ${RELEASE_PATTERN} only`, ['api', '-X', 'POST', `repos/${REPOSITORY}/environments/${ENVIRONMENT}/deployment-branch-policies`], { name: RELEASE_PATTERN, type: 'branch' });
 }
 for (const branch of ['develop', 'main']) {
-  change(`protect ${branch}`, ['api', '-X', 'PUT', `repos/${REPOSITORY}/branches/${branch}/protection`], protection(CHECKS_WITH_CODEQL));
+  change(`protect ${branch}`, ['api', '-X', 'PUT', `repos/${REPOSITORY}/branches/${branch}/protection`], protection(CHECKS));
 }
 protectReleaseBranches();
