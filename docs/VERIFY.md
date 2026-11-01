@@ -1,8 +1,8 @@
 # Manual check on a real device
 
-CI cannot see the device. Run this in Ulanzi Studio before publishing each release, and record the result in the release notes. Pushing an image gets no reply from the device, so a lost frame looks exactly like a drawn one: look at the keys, not just the preview in Studio.
+CI cannot see the device. Run this in Ulanzi Studio before publishing each release, and record the result under "Technical details" in the draft's notes: merging into `main` publishes it. Pushing an image gets no reply from the device, so a lost frame looks exactly like a drawn one: look at the keys, not just the preview in Studio.
 
-Setup: run `npm run package`, unzip the result into the plugins folder (`%APPDATA%\Ulanzi\UlanziDeck\Plugins\` or `~/Library/Application Support/Ulanzi/UlanziDeck/Plugins/`), and restart Studio. To see logs, start Studio with `--log --nodeRemoteDebug`. The plugin writes `[Clima Pro]` lines there: its arguments at startup, each connection, each kind of failure, and why it stopped. `exitCode=1` means it failed, and `exitCode=0` means it was asked to stop.
+Setup: download the zip from the draft release, or run `npm run package`, then unzip it into the plugins folder (`%APPDATA%\Ulanzi\UlanziDeck\Plugins\` or `~/Library/Application Support/Ulanzi/UlanziDeck/Plugins/`), and restart Studio. To see logs, start Studio with `--log --nodeRemoteDebug`. The plugin writes `[Clima Pro]` lines there: its arguments at startup, each connection, each kind of failure, and why it stopped. `exitCode=1` means it failed, and `exitCode=0` means it was asked to stop.
 
 ## First run
 
