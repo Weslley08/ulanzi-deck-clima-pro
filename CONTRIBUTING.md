@@ -16,13 +16,14 @@ npm test
 
 No WeatherAPI.com key is needed. The tests use canned replies, and pull requests from forks run the same checks without any secret.
 
-Open a pull request against `main`. CI runs the tests on Windows, macOS and Linux, builds the zip and checks it. Keep each pull request to one change.
+Open a pull request against `develop`. CI runs the tests on Windows, macOS and Linux, measures coverage, builds the zip and checks it. Keep each pull request to one change.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `npm test` | All tests. The panel tests skip if no Chromium is installed; set `CHROME_PATH` to use one. |
+| `npm run test:coverage` | All tests, and fails if coverage of `plugin/` drops below the floors in `scripts/run-tests.mjs`. On Windows a plugin the tests kill writes no coverage, so `app.js` reads lower there. The panel runs in a browser, so it is not measured. |
 | `npm run typecheck` | Checks the Defesa Civil modules against `alert-types.d.ts`. Nothing is built: the plugin is plain JavaScript. |
 | `npm run test:live:alerts` | Checks our assumptions against the real Defesa Civil feed and lists the alerts in force. Needs no key, and downloads the feed a few times, several MB each. |
 | `npm run build:assets` | Regenerates theme pictures, icons, store art and `docs/themes.png`. |
@@ -30,6 +31,7 @@ Open a pull request against `main`. CI runs the tests on Windows, macOS and Linu
 | `npm run package` | Builds `dist/com.ulanzi.climapro.ulanziPlugin.zip`. |
 | `npm run verify:package` | Checks the zip against the store checklist and starts the plugin from it. |
 | `npm run measure` | CPU and memory use. Include the numbers if your change could affect them. |
+| `npm run bump -- 1.2.3` | Raises the version in every file that has it. The flow does this by itself; use it for a bigger jump. |
 | `npm run check:secrets`, `check:sdk`, `audit` | The security checks CI runs. |
 | `WEATHERAPI_KEY=xxx npm run test:live` | Checks our assumptions against the real API, using your own key. |
 | `WEATHERAPI_KEY=xxx npm run watch:updates -- London 60` | Shows how often `last_updated` moves. Spends one call a minute of your plan. |
@@ -97,21 +99,34 @@ Then copy the plugin folder into the simulator's `plugins/` folder and start the
 node plugin/app.js 127.0.0.1 39069 en
 ```
 
-## Releasing
+## How a change ships
 
-A tag, its release and the plugin all carry the same number. `Version` in `manifest.json` is the source: the settings panel shows it at the bottom as `Clima Pro v1.2.3`, so a user can tell which release they run. A test fails if either `package.json` disagrees, and the release workflow fails if the tag does.
+```
+feature/*, fix/*, chore/*...  ->  develop  ->  release/vX.Y.Z  ->  main
+```
 
-1. In a pull request, raise the version in `manifest.json` and both `package.json` files, following semantic versioning.
-2. After it merges, tag that commit on `main`:
+A person merges at each arrow, and the rest happens by itself. The **Branch flow** check refuses a pull request that skips a step.
 
-   ```bash
-   git tag -a v1.2.3 -m "Clima Pro 1.2.3"
-   git push origin v1.2.3
-   ```
+1. **Push a branch** named `feature/`, `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `build/` or `perf/`. Its pull request to `develop` opens by itself, unless you closed an earlier one. From a fork, open it by hand. The tests, coverage, zip, security checks, CodeQL and dependency review must pass.
+2. **Merge into `develop`.** If the version there is already released, or too low for what merged, a `bump/` pull request raises it and merges itself: a new feature raises the second number, and anything else the third. Then a pull request from `develop` to `release/vX.Y.Z` opens, and later merges join it.
+3. **Merge into `release/vX.Y.Z`.** This is the approval, because GitHub does not let a person approve a pull request in their own name. The zip is built once and must start on Windows and macOS, the WeatherAPI.com and Defesa Civil tests run against the real services, and `npm run measure` runs. If all of that passes, a draft release gets the zip, its checksum and the numbers, and a pull request to `main` opens.
+4. **Test the draft's zip** with [docs/VERIFY.md](docs/VERIFY.md), put the result in the draft's notes, and tick the box in the pull request.
+5. **Merge into `main`.** The draft is published as the final release, its tag is created on the commit that was validated, the release branch goes away, and the `latest` branch follows. The release is public from that moment, and the community store reads it by itself.
 
-3. The release workflow repeats every check and creates a draft release with the zip and its checksum.
-4. Test that zip with [docs/VERIFY.md](docs/VERIFY.md), run `npm run measure`, and put both results in the release notes.
-5. Publish the draft. If the manual check fails, fix it and release a new number instead of moving the tag.
+A tag, its release and the plugin all carry the same number. `Version` in `manifest.json` is the source: the settings panel shows it at the bottom as `Clima Pro v1.2.3`, so a user can tell which release they run.
+
+- **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the draft and clears the box. No tag has to move, because a draft has none yet.
+- **A problem after publishing:** the next version fixes it. A number is never reused.
+- **Merge commits only:** the repository allows no other kind, because the flow reads the merged branches from them and the release branch must end up inside `main`.
+- **Dependabot:** its security updates always open against `main`, whatever the configuration says, so change their base to `develop`.
+
+### Setup for the maintainer
+
+Each of these is needed once, and a step that lacks a secret fails and names it.
+
+- **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge and creates the environment below. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
+- **`AUTOMATION_TOKEN`:** a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with read and write on **Contents** and **Pull requests**. A pull request opened with the workflow's own token leaves CI waiting for a click on "Approve workflows to run". Set it with `gh secret set AUTOMATION_TOKEN`, and again when it expires.
+- **`WEATHERAPI_KEY`:** a WeatherAPI.com key for the live tests, about 40 calls per validation. Set it with `gh secret set WEATHERAPI_KEY --env release-validation`. That environment only gives it to `release/v*` branches.
 
 ## Security
 
