@@ -440,6 +440,10 @@ test('the draft is not read for a pull request to develop or from a fork, which 
   assert.equal(toDevelop.status, 0);
   assert.equal(callsTo(toDevelop.calls, 'release').length, 0);
   assert.equal(flow('check-pull-request', { env: { ...RELEASE_PR(version), GH_TOKEN: '' } }).status, 0);
+  rmSync(log, { force: true });
+  const toAnotherBranch = flow('check-pull-request', { env: { ...RELEASE_PR(version), PR_BASE: 'feat/x' } });
+  assert.equal(toAnotherBranch.status, 0);
+  assert.equal(toAnotherBranch.calls.length, 0, 'only a merge into main publishes');
 });
 
 test('a release published by hand gets its branch removed and latest moved on the next run', () => {
