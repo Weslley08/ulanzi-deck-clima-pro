@@ -1,6 +1,6 @@
 {
   "Name": "Clima Pro",
-  "Description": "Live weather on your keys, in the theme you choose.",
+  "Description": "Live weather on your keys, in the theme you choose, with official Defesa Civil alerts in Brazil. Weather data by WeatherAPI.com, for general information only: never the sole basis for safety-critical decisions.",
   "Actions": [
     { "Name": "Weather", "Tooltip": "Show the weather. Press to switch screens." }
   ],

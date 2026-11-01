@@ -146,13 +146,15 @@ async function storeArt(width, height, { title, subtitle, columns }) {
   );
   const gridWidth = columns * face + (columns - 1) * gap;
   const left = (width - gridWidth) / 2;
-  let body = text('outfit-500', title, width / 2, height * 0.135, titleSize, { anchor: 'middle', fill: '#FFFFFF' })
-    + text('outfit-500', subtitle, width / 2, height * 0.205, subtitleSize, { anchor: 'middle', fill: '#B9BEC7' });
+  // Wide art has room to spare under the faces. Centered, the title survives a store card cropping top and bottom.
+  const top = Math.round((height - header - gap * (rows + 1) - rows * face) / 2);
+  let body = text('outfit-500', title, width / 2, top + height * 0.135, titleSize, { anchor: 'middle', fill: '#FFFFFF' })
+    + text('outfit-500', subtitle, width / 2, top + height * 0.205, subtitleSize, { anchor: 'middle', fill: '#B9BEC7' });
   for (const [i, theme] of THEME_IDS.entries()) {
     const col = i % columns;
     const row = Math.floor(i / columns);
     const png = await facePng(sampleView(theme, 'now'), Math.round(face));
-    body += placed(png, left + col * (face + gap), header + gap + row * (face + gap), face);
+    body += placed(png, left + col * (face + gap), top + header + gap + row * (face + gap), face);
   }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#14161B"/>${body}</svg>`;
   return svgToPng(svg, width);
