@@ -45,30 +45,14 @@ export default class AlmanacTheme extends Theme {
       + this.bigTemp(view, view.temp, 14, 90, 70, 44)
       + this.icon(view, view.condition, view.isDay, 86, 48, 46)
       + this.rule(104)
-      + this.label(view, `${view.max} / ${view.min}`, 72, 126, 112, 19, { anchor: 'middle', fill: sub, minSize: 13 });
+      + this.detailGlyph(view, 'thermo', 20, 111, 18) + this.label(view, view.feels, 40, 126, 32, 19, { fill: sub, minSize: 13 })
+      + this.detailGlyph(view, 'drop', 76, 111, 18) + this.label(view, `${view.humidity}%`, 96, 126, 34, 19, { fill: sub, minSize: 13 });
   }
 
   details(view) {
     const out = super.details(view);
     const rules = [42, 73, 104].map((y) => `<path d="M12 ${y}H132" stroke="${INK}" stroke-width=".5"/>`).join('');
     return rules + out;
-  }
-
-  // Narrower columns than the base layout, to stay inside the printed border.
-  forecast(view) {
-    const { sub, accent } = this.palette(view);
-    const centers = [31, 72, 113];
-    const column = 38;
-    let out = '';
-    view.days.slice(0, 3).forEach((day, i) => {
-      const x = centers[i];
-      out += this.label(view, day.label, x, 26, column, 14, { anchor: 'middle', minSize: 10, fill: sub });
-      out += this.icon(view, day.condition, true, x - 17, 31, 34);
-      out += this.label(view, day.max, x, 88, column, 19, { anchor: 'middle', minSize: 12 });
-      out += this.label(view, day.min, x, 107, column, 15, { anchor: 'middle', minSize: 11, fill: sub });
-      out += this.label(view, day.rain, x, 127, column, 13, { anchor: 'middle', minSize: 10, fill: accent });
-    });
-    return out;
   }
 
   staleMark() {

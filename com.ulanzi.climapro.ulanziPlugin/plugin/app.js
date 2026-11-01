@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { HostConnection, silenceConsole } from './host.js';
 import { clearFaceCache } from './render/renderer.js';
 import { normalizeApiKey } from './settings.js';
-import { fetchForecast } from './weather-api.js';
+import { fetchCurrent } from './weather-api.js';
 import { WeatherHub } from './weather-hub.js';
 import { WeatherKey } from './weather-key.js';
 
@@ -18,7 +18,7 @@ const { Version: VERSION } = JSON.parse(readFileSync(new URL('../manifest.json',
 silenceConsole();
 
 const $UD = new HostConnection();
-const hub = new WeatherHub({ fetchForecast, log: (message) => $UD.logMessage(message, 'warn') });
+const hub = new WeatherHub({ fetchCurrent, log: (message) => $UD.logMessage(message, 'warn') });
 const keys = new Map();
 
 function keyFor(jsn) {

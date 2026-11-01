@@ -85,8 +85,8 @@ export default class LcdTheme extends Theme {
   now(view) {
     const unit = view.unit.toUpperCase();
     return this.icon(view, view.condition, view.isDay, 13, 12, 48)
-      + this.label(view, `H ${view.max}`, 131, 30, 66, 24, { anchor: 'end' })
-      + this.label(view, `L ${view.min}`, 131, 52, 66, 24, { anchor: 'end' })
+      + pixelGlyph('thermo', 72, 17, 1, INK) + this.label(view, view.feels, 131, 30, 44, 24, { anchor: 'end' })
+      + pixelGlyph('drop', 72, 39, 1, INK) + this.label(view, `${view.humidity}%`, 131, 52, 44, 24, { anchor: 'end' })
       + sevenSegment(view.tempValue, 110, 63, 52)
       + this.label(view, `°${unit}`, 134, 84, 24, 22, { anchor: 'end' })
       + this.label(view, view.city, 72, 133, 122, 20, { anchor: 'middle' });
@@ -110,20 +110,6 @@ export default class LcdTheme extends Theme {
       out += this.detailGlyph(view, name, 11, top + row * rowHeight);
       const fitted = fit(font, `${value}${unit ? ` ${unit.toUpperCase()}` : ''}`, 92, 30, 18);
       out += text(font, fitted.text, 133, baseline, fitted.size, { anchor: 'end', fill: INK });
-    });
-    return out;
-  }
-
-  forecast(view) {
-    const centers = [27, 72, 117];
-    let out = '';
-    view.days.slice(0, 3).forEach((day, i) => {
-      const x = centers[i];
-      out += this.label(view, day.label, x, 25, 40, 20, { anchor: 'middle' });
-      out += this.icon(view, day.condition, true, x - 16, 30, 32);
-      out += this.label(view, day.max, x, 84, 40, 26, { anchor: 'middle' });
-      out += this.label(view, day.min, x, 106, 40, 22, { anchor: 'middle', fill: SUB });
-      out += this.label(view, day.rain, x, 128, 40, 20, { anchor: 'middle', fill: SUB });
     });
     return out;
   }

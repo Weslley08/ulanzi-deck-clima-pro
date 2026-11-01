@@ -36,12 +36,9 @@ export class WeatherKey {
     const next = normalizeSettings(param);
     const samePlace = this.#subscription && next.location === this.settings.location;
     this.settings = next;
-    if (samePlace) {
-      this.#subscription.setIntervalMs(this.#intervalMs);
-    } else {
+    if (!samePlace) {
       this.#subscription?.close();
       this.#subscription = this.hub.subscribe(next.location, {
-        intervalMs: this.#intervalMs,
         active: this.active,
         onUpdate: () => this.onWeatherChanged(),
       });
@@ -102,7 +99,7 @@ export class WeatherKey {
     const { settings, hub } = this;
     if (hub.keyState === 'missing') return buildMessageView(settings, this.host.t('Add your API key'), 'key');
     const { data, error, stale } = this.#subscription.snapshot();
-    if (data) return buildWeatherView(data, settings, settings.screen, this.host.language, stale);
+    if (data) return buildWeatherView(data, settings, settings.screen, stale);
     if (error) {
       const [message, glyph] = ERROR_FACES[error.kind] ?? ERROR_FACES.server;
       return buildMessageView(settings, this.host.t(message), glyph);
@@ -152,9 +149,5 @@ export class WeatherKey {
     this.#renderToken += 1;
     this.#subscription?.close();
     this.#subscription = null;
-  }
-
-  get #intervalMs() {
-    return this.settings.refresh * 60_000;
   }
 }

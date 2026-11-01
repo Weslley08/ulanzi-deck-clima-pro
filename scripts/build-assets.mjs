@@ -37,10 +37,9 @@ function placed(png, x, y, size, radius = size * 0.14) {
 
 const SHEET_COLUMNS = [
   (t) => sampleView(t, 'now'),
-  (t) => sampleView(t, 'now', { city: 'Rio de Janeiro', condition: 'rain', isDay: false, tempC: 19, maxC: 22, minC: 17 }),
-  (t) => sampleView(t, 'now', { city: 'Reykjavík', condition: 'snow', tempC: -6, feelsLikeC: -11, maxC: -3, minC: -9 }),
+  (t) => sampleView(t, 'now', { city: 'Rio de Janeiro', condition: 'rain', isDay: false, tempC: 19, feelsLikeC: 18, humidity: 94 }),
+  (t) => sampleView(t, 'now', { city: 'Reykjavík', condition: 'snow', tempC: -6, feelsLikeC: -11, humidity: 100 }),
   (t) => sampleView(t, 'details'),
-  (t) => sampleView(t, 'forecast'),
   (t) => sampleMessage(t),
 ];
 

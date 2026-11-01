@@ -59,19 +59,4 @@ export default class NeonTheme extends Theme {
       + big(PINK, -2, 2) + big(CYAN, 0, 0)
       + this.label(view, String(view.city).toUpperCase(), 72, 128, 130, 14, { anchor: 'middle', minSize: 9, fill: sub });
   }
-
-  forecast(view) {
-    const { sub } = this.palette(view);
-    const centers = [25, 72, 119];
-    let out = '';
-    view.days.slice(0, 3).forEach((day, i) => {
-      const x = centers[i];
-      out += this.label(view, day.label, x, 22, 44, 12, { anchor: 'middle', minSize: 9, fill: sub });
-      out += this.icon(view, day.condition, true, x - 19, 28, 38);
-      out += this.label(view, day.max, x, 88, 44, 17, { anchor: 'middle', minSize: 10, fill: CYAN });
-      out += this.label(view, day.min, x, 108, 44, 14, { anchor: 'middle', minSize: 10, fill: sub });
-      out += this.label(view, day.rain, x, 130, 44, 11, { anchor: 'middle', minSize: 9, fill: AMBER });
-    });
-    return out;
-  }
 }

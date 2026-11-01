@@ -1,0 +1,27 @@
+{
+  "location": {
+    "name": "São Paulo",
+    "region": "Sao Paulo",
+    "country": "Brazil",
+    "lat": -23.53,
+    "lon": -46.62,
+    "tz_id": "America/Sao_Paulo",
+    "localtime_epoch": 1793549100,
+    "localtime": "2026-11-02 12:05"
+  },
+  "current": {
+    "last_updated_epoch": 1793548800,
+    "last_updated": "2026-11-02 12:00",
+    "temp_c": 27.2,
+    "temp_f": 81.0,
+    "is_day": 1,
+    "condition": { "text": "Partly cloudy", "icon": "//cdn.weatherapi.com/weather/64x64/day/116.png", "code": 1003 },
+    "wind_mph": 8.7,
+    "wind_kph": 14.0,
+    "precip_mm": 0.4,
+    "precip_in": 0.02,
+    "humidity": 62,
+    "feelslike_c": 29.1,
+    "feelslike_f": 84.4
+  }
+}

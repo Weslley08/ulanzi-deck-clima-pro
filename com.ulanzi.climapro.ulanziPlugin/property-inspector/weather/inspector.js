@@ -2,7 +2,7 @@
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 
 const API_KEY_FORMAT = /^[A-Za-z0-9]{10,64}$/;
-const DEFAULTS = { theme: 'sky', location: '', label: '', unit: 'c', screen: 'now', refresh: '30' };
+const DEFAULTS = { theme: 'sky', location: '', label: '', unit: 'c', screen: 'now' };
 const MIN_SEARCH_LENGTH = 3;
 const SEARCH_DELAY_MS = 500;
 const LINKS = { getKey: 'https://www.weatherapi.com/signup', attribution: 'https://www.weatherapi.com/' };

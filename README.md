@@ -4,11 +4,12 @@ Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi 
 
 **Status:** not released yet. It passes its automated tests, but has not run in the real Ulanzi Studio, on a device, or against the live API with a valid key. [docs/VERIFY.md](docs/VERIFY.md) lists what is still to be checked.
 
-![Six themes, each with current conditions, details, forecast and setup screens](docs/themes.png)
+![Six themes, each with current conditions, details and setup screens](docs/themes.png)
 
 - **Six themes:** Sky, Minimal, Thermal, LCD, Neon and Almanac. Each key can have its own.
-- **Three screens:** now, details (feels like, humidity, wind, chance of rain) and a 3-day forecast. Press the key to switch.
-- **Light on your machine:** no CPU use between updates, and no calls while the key is not on screen.
+- **The latest conditions:** the plugin checks about a minute after WeatherAPI.com's next update is due, so there is no refresh setting to choose.
+- **Two screens:** now and details (feels like, humidity, wind, precipitation). Press the key to switch.
+- **Light on your machine:** almost no CPU use between updates, and no calls while the key is not on screen.
 - **Your own free key:** the plugin uses your WeatherAPI.com account, and your key and location go only to WeatherAPI.com.
 
 ## Setup
@@ -31,13 +32,13 @@ The panel and the messages on the key are available in English, Portuguese, Span
 | Add your API key | No key saved | Paste your key in the settings panel |
 | Check your API key | WeatherAPI.com rejected it | Copy it again from your account |
 | Location not found | No place matches | Try a nearby city, or a postcode |
-| API limit reached | The key used up its monthly calls | Wait for the next month, or choose a longer refresh |
+| API limit reached | The key used up its monthly calls | Wait for the next month, or show fewer places |
 | No connection | WeatherAPI.com cannot be reached | It retries by itself |
 | Small dot in the corner | The last update failed, so the data is getting old | It retries by itself |
 
 ## How much of your quota it uses
 
-Keys showing the same place share one request, and nothing is requested while no key is on screen. Kept on screen around the clock, one place uses about 1,500 calls a month at the default 30 minutes and 3,000 at 15 minutes. WeatherAPI.com's free plan listed 100,000 calls a month when this was written.
+Keys showing the same place share one request, and nothing is requested while no key is on screen. WeatherAPI.com says current conditions update every 10 to 15 minutes, so the plugin asks about a minute after the next update is due, and again every 3 minutes if it has not arrived yet. Kept on screen around the clock, one place should use about 3,000 to 6,000 calls a month. WeatherAPI.com's free plan listed 100,000 calls a month when this was written.
 
 ## Weather data
 
