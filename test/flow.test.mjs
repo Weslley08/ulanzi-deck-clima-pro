@@ -33,6 +33,14 @@ test('the merged branch comes from what GitHub writes, for this repository and f
   ]), ['feat/choose-exact-place', 'fix/typo']);
 });
 
+test('bringing main back is not new work, but a fork whose branch is called main is', () => {
+  assert.deepEqual(mergedBranches([
+    'Merge pull request #10 from Weslley08/main',
+    'Merge pull request #11 from someone-else/main',
+  ], 'Weslley08'), ['main']);
+  assert.deepEqual(planDevelop({ version: '1.4.0', tags: ['1.4.0'], branches: mergedBranches(['Merge pull request #10 from Weslley08/main'], 'Weslley08') }), { idle: true });
+});
+
 test('a feature raises the second number and anything else the third', () => {
   assert.equal(nextVersion('1.4.2', ['fix/a', 'feat/b']), '1.5.0');
   assert.equal(nextVersion('1.4.2', ['feature/b']), '1.5.0');
