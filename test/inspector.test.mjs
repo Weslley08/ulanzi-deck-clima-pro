@@ -152,6 +152,21 @@ before(async () => {
   await cdp('Page.enable');
 });
 
+// Chromium's helper processes can outlive the main one and keep writing to the profile. rmSync's own
+// retries never list the folder again, so one new file makes all of them fail.
+async function removeProfile() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      rmSync(profile, { recursive: true, force: true });
+      return;
+    } catch {
+      await sleep(500);
+    }
+  }
+  // A leftover temporary folder says nothing about the panel, so it does not fail the run.
+  console.warn(`could not remove ${profile}`);
+}
+
 after(async () => {
   page?.close();
   browser?.kill();
@@ -159,7 +174,7 @@ after(async () => {
   for (const client of host?.clients ?? []) client.terminate();
   host?.close();
   web?.close();
-  if (profile) rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  if (profile) await removeProfile();
 });
 
 test('connects, shows itself, and asks for the saved key and status', options, async () => {
