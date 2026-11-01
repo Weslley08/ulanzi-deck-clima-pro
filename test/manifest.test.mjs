@@ -69,7 +69,7 @@ test('every file agrees on the version, because the release tag must match them 
 test('the store text carries the disclaimer the WeatherAPI.com terms require', () => {
   const en = JSON.parse(read('en.json'));
   assert.ok(manifest.Detail.includes(en.Localization.disclaimer));
-  assert.ok(manifest.Detail.includes('WeatherAPI.com'));
+  assert.match(manifest.Detail, /WeatherAPI\.com/);
 });
 
 test('English is present so every other language has a fallback', () => {
@@ -118,7 +118,7 @@ test('the API key field stays outside the per-key settings form', () => {
 });
 
 test('the inspector credits the data source and shows the disclaimer', () => {
-  assert.ok(inspectorHtml.includes('WeatherAPI.com'));
+  assert.match(inspectorHtml, /WeatherAPI\.com/);
   assert.ok(inspectorHtml.includes(JSON.parse(read('en.json')).Localization.disclaimer));
 });
 
