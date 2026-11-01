@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  DEVELOP, MAIN, bumpBranch, bumpPullRequest, draftNotes, flowProblem, mainPullRequest, mergedBranches, planDevelop,
-  releaseBranch, releasePullRequest, versionOfReleaseBranch, versionTags, workPullRequest,
+  DEVELOP, MAIN, bumpBranch, bumpPullRequest, compareVersions, draftNotes, flowProblem, mainPullRequest, mergedBranches,
+  notesStillToWrite, planDevelop, refreshNotes, releaseBranch, releasePullRequest, versionOfReleaseBranch, versionTags, workPullRequest,
 } from './lib/flow.mjs';
 import { PLUGIN_FOLDER } from './lib/project.mjs';
 import { manifestVersion, setVersion, versionMismatches } from './lib/version.mjs';
@@ -158,7 +158,7 @@ const findDraft = (tag) => ghJson('release', 'list', '--limit', '100', '--json',
 
 /**
  * Runs once everything on a release branch has passed. The git tag is only born when the draft is
- * published, so validating again replaces a draft and never moves a tag.
+ * published, so validating again updates a draft and never moves a tag.
  */
 function draftRelease() {
   const version = versionOfReleaseBranch(env('BRANCH'));
@@ -170,12 +170,13 @@ function draftRelease() {
     'api', '-X', 'POST', 'repos/{owner}/{repo}/releases/generate-notes',
     '-f', `tag_name=${tag}`, '-f', `target_commitish=${commit}`, ...(previous ? ['-f', `previous_tag_name=v${previous}`] : []),
   );
-  const notes = draftNotes({ repository, commit, changes, measure: readFileSync(join(workDir, 'measure', 'measure.txt'), 'utf8') });
+  const notes = draftNotes({ repository, version, changes, measure: readFileSync(join(workDir, 'measure', 'measure.txt'), 'utf8') });
   const title = `Clima Pro ${version}`;
   const assets = [join('dist', `${PLUGIN_FOLDER}.zip`), join('dist', 'SHA256SUMS.txt')];
 
   if (findDraft(tag)) {
-    gh('release', 'edit', tag, '--target', commit, '--title', title, '--notes', notes);
+    const { body } = ghJson('release', 'view', tag, '--json', 'body');
+    gh('release', 'edit', tag, '--target', commit, '--title', title, '--notes', refreshNotes(body, notes));
     gh('release', 'upload', tag, ...assets, '--clobber');
   } else {
     gh('release', 'create', tag, ...assets, '--draft', '--target', commit, '--title', title, '--notes', notes);
@@ -206,11 +207,15 @@ function openMainPullRequest() {
 function publish() {
   const version = manifestVersion(workDir);
   const tag = `v${version}`;
-  if (tagsOnRepo().includes(version)) return console.log(`${tag} is already out, so there is nothing to publish.`);
+  const tags = tagsOnRepo();
+  if (tags.includes(version)) return console.log(`${tag} is already out, so there is nothing to publish.`);
+  // The Community Store orders by publish date, so this would show an older version as the current one.
+  if (tags.length && compareVersions(version, tags.at(-1)) < 0) fail(`v${tags.at(-1)} is already out, and ${tag} is older, so it stays a draft.`);
   if (!findDraft(tag)) fail(`There is no draft for ${tag}.`);
 
+  const { body, targetCommitish } = ghJson('release', 'view', tag, '--json', 'body,targetCommitish');
+  if (notesStillToWrite(body)) fail(`The top of the notes of the draft ${tag} still has to be written for customers. Write it, then run this job again.`);
   // What goes out is the zip that was validated, so main must be exactly the code it was built from.
-  const { targetCommitish } = ghJson('release', 'view', tag, '--json', 'targetCommitish');
   if (git('rev-parse', `${targetCommitish}^{tree}`) !== git('rev-parse', 'HEAD^{tree}')) {
     fail(`${MAIN} is not the code the draft ${tag} was validated on (${targetCommitish}), so it stays a draft.`);
   }

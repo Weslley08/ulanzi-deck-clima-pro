@@ -14,6 +14,12 @@ const RELEASE_BRANCH = /^release\/v(\d+\.\d+\.\d+)$/;
 const MERGE_SUBJECT = /^Merge pull request #\d+ from [^/\s]+\/(\S+)$/;
 // The box in the pull request to main. Merging there publishes, and CI cannot see the device.
 const DEVICE_CHECK = /^\s*[-*]\s*\[[xX]\].*docs\/VERIFY\.md/m;
+const UNTICKED_BOX = /^\s*[-*]\s*\[ \]/m;
+// Customers read the body of a release: the Community Store's app shows all of it as "What changed".
+// Publishing refuses a draft that still has either line, so a person has to write that part.
+const NOTES_START = 'WRITE THIS FOR CUSTOMERS.';
+const NOTES_END = 'END OF WHAT TO REPLACE';
+const TECHNICAL_DETAILS = '## Technical details';
 
 export const releaseBranch = (version) => `release/v${version}`;
 export const bumpBranch = (version) => `bump/v${version}`;
@@ -67,7 +73,8 @@ export function flowProblem({ base, head, sameRepo, version, body }) {
   if (base === MAIN) {
     if (!headRelease) return `A pull request to ${MAIN} must come from a release/vX.Y.Z branch. Change the base of this one to ${DEVELOP}.`;
     if (version !== headRelease) return `${head} says version ${version}.`;
-    return DEVICE_CHECK.test(body ?? '') ? null : 'Merging publishes the release. Run docs/VERIFY.md on a device, then tick its box in the description.';
+    if (!DEVICE_CHECK.test(body ?? '')) return 'Merging publishes the release. Run docs/VERIFY.md on a device, then tick its box in the description.';
+    return UNTICKED_BOX.test(body) ? 'Merging publishes the release. Tick every box in the description first.' : null;
   }
   return null;
 }
@@ -99,10 +106,42 @@ export function releasePullRequest({ version, branches }) {
 export function mainPullRequest({ version, repository, commit, measure }) {
   return {
     title: `Publish v${version}`,
-    body: `Merging this publishes the draft **Clima Pro ${version}** from [Releases](https://github.com/${repository}/releases) as the final release. It cannot be taken back: from then on it is what people download, and the community store reads it by itself.\n\n## Done automatically on ${commit}\n\n- Tests, coverage and the security checks\n- The zip started and drew a key on Windows and macOS\n- The WeatherAPI.com and Defesa Civil tests, against the real services\n\n\`\`\`\n${measure.trim()}\n\`\`\`\n\n## Before merging\n\nCI cannot see the device. A new merge into this branch validates again, replaces the draft and clears this box.\n\n- [ ] Ran docs/VERIFY.md on a real device with the zip from this draft, and put the result in its notes`,
+    body: `Merging this publishes the draft **Clima Pro ${version}** from [Releases](https://github.com/${repository}/releases) as the final release. It cannot be taken back: from then on it is what people download, and the community store reads it by itself.\n\n## Done automatically on ${commit}\n\n- Tests, coverage and the security checks\n- The zip started and drew a key on Windows and macOS\n- The WeatherAPI.com and Defesa Civil tests, against the real services\n\n\`\`\`\n${measure.trim()}\n\`\`\`\n\n## Before merging\n\nCI cannot see the device, and customers read the notes. A new merge into this branch validates again, replaces the zip and the technical details, keeps the text you wrote above them, and clears these boxes.\n\n- [ ] Ran docs/VERIFY.md on a real device with the zip from this draft, and put the result under "Technical details" in its notes\n- [ ] Replaced the top of the draft's notes with what changes for customers`,
   };
 }
 
-export function draftNotes({ repository, commit, changes, measure }) {
-  return `${changes.trim()}\n\n## How far this has been tested\n\nCI ran the tests on Windows, macOS and Linux, started this zip on Windows and macOS against a fake host, and ran the WeatherAPI.com and Defesa Civil tests against the real services. [The manual checklist](https://github.com/${repository}/blob/${commit}/docs/VERIFY.md) has not been completed.\n\n## Install\n\n1. Download \`com.ulanzi.climapro.ulanziPlugin.zip\`, not the **Source code** archives, which do not include the dependencies and will not start. You can check it against \`SHA256SUMS.txt\`.\n2. Unzip it into the plugins folder:\n   - Windows: \`%APPDATA%\\Ulanzi\\UlanziDeck\\Plugins\\\`\n   - macOS: \`~/Library/Application Support/Ulanzi/UlanziDeck/Plugins/\`\n3. Restart Studio, drag **Weather** onto a key, and paste your [WeatherAPI.com key](https://www.weatherapi.com/signup) into the settings panel.\n\n## Performance\n\n\`npm run measure\` on a GitHub Windows runner, against a fake host rather than Studio:\n\n\`\`\`\n${measure.trim()}\n\`\`\``;
+export const notesStillToWrite = (body) => body.includes(NOTES_START) || body.includes(NOTES_END);
+
+export function draftNotes({ repository, version, changes, measure }) {
+  const blob = `https://github.com/${repository}/blob/v${version}`;
+  const measured = measure.trim().split('\n').map((line) => `- ${line.trim().replace(/\s{2,}/g, ': ')}`).join('\n');
+  return `${NOTES_START} Replace everything down to the "${NOTES_END}" line, or publishing refuses this draft. The Community Store's app shows all these notes as "What changed", with no tables or HTML, and its site shows only the first three lines, up to 240 characters, with a heading counting as a line. So open with one sentence and two short bullets on what changes for the user, with no heading above them, then the same in Portuguese.
+
+Merged since the last release:
+
+${changes.trim()}
+
+${NOTES_END}
+
+## Installing by hand
+
+Download \`com.ulanzi.climapro.ulanziPlugin.zip\`, not the **Source code** archives, which will not start, and follow the [setup steps](${blob}/README.md#setup). You need a free [WeatherAPI.com key](https://www.weatherapi.com/signup).
+
+## Data sources
+
+Weather data by [WeatherAPI.com](https://www.weatherapi.com/). It is for general information only and should not be the sole basis for safety-critical decisions. The full disclaimer is in the settings panel and the [README](${blob}/README.md#weather-data). Alerts come from the public IDAP feed of Brazil's Defesa Civil. This project is not affiliated with Ulanzi, WeatherAPI.com or the Defesa Civil.
+
+${TECHNICAL_DETAILS}
+
+[The manual checklist](${blob}/docs/VERIFY.md) has not been completed. The automated checks passed on Windows, macOS and Linux, and found no known vulnerabilities in the dependencies and no secret patterns. These tools only find problems that are already known. This zip started on Windows and macOS against a fake host, and the WeatherAPI.com and Defesa Civil tests ran against the real services.
+
+\`npm run measure\` on a GitHub Windows runner, against a fake host and a synthetic feed:
+
+${measured}`;
+}
+
+/** Validating again brings new technical details, and must not lose the text a person already wrote. */
+export function refreshNotes(existing, fresh) {
+  if (notesStillToWrite(existing)) return fresh;
+  return `${existing.split(TECHNICAL_DETAILS)[0].trimEnd()}\n\n${fresh.slice(fresh.indexOf(TECHNICAL_DETAILS))}`;
 }

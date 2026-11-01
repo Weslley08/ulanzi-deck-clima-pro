@@ -110,13 +110,14 @@ A person merges at each arrow, and the rest happens by itself. The **Branch flow
 1. **Push a branch** named `feature/`, `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `build/` or `perf/`. Its pull request to `develop` opens by itself, unless you closed an earlier one. From a fork, open it by hand. The tests, coverage, zip, security checks, CodeQL and dependency review must pass.
 2. **Merge into `develop`.** If the version there is already released, or too low for what merged, a `bump/` pull request raises it and merges itself: a new feature raises the second number, and anything else the third. Then a pull request from `develop` to `release/vX.Y.Z` opens, and later merges join it.
 3. **Merge into `release/vX.Y.Z`.** This is the approval, because GitHub does not let a person approve a pull request in their own name. The zip is built once and must start on Windows and macOS, the WeatherAPI.com and Defesa Civil tests run against the real services, and `npm run measure` runs. If all of that passes, a draft release gets the zip, its checksum and the numbers, and a pull request to `main` opens.
-4. **Test the draft's zip** with [docs/VERIFY.md](docs/VERIFY.md), put the result in the draft's notes, and tick the box in the pull request.
-5. **Merge into `main`.** The draft is published as the final release, its tag is created on the commit that was validated, the release branch goes away, and the `latest` branch follows. The release is public from that moment, and the community store reads it by itself.
+4. **Test the draft's zip** with [docs/VERIFY.md](docs/VERIFY.md) and put the result under "Technical details" in the draft's notes. Replace the top of the notes with what changes for customers, because the Community Store shows them the whole text. Then tick both boxes in the pull request.
+5. **Merge into `main`.** The draft is published as the final release, its tag is created on the commit that was validated, the release branch goes away, and the `latest` branch follows. The release is public from that moment, and it reaches Community Store users as an update.
 
 A tag, its release and the plugin all carry the same number. `Version` in `manifest.json` is the source: the settings panel shows it at the bottom as `Clima Pro v1.2.3`, so a user can tell which release they run.
 
-- **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the draft and clears the box. No tag has to move, because a draft has none yet.
-- **A problem after publishing:** the next version fixes it. A number is never reused.
+- **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the zip and the technical details, keeps the text you wrote above them, and clears the boxes. No tag has to move, because a draft has none yet.
+- **A problem after publishing:** the next version fixes it. A number is never reused, and an older version is never published after a newer one, because the Community Store orders by publish date and would show it as current.
+- **A release that stayed a draft after the merge:** the Publish job fails if the top of the notes was not written. Write it and run that job again.
 - **Merge commits only:** the repository allows no other kind, because the flow reads the merged branches from them and the release branch must end up inside `main`.
 - **Dependabot:** its security updates always open against `main`, whatever the configuration says, so change their base to `develop`.
 

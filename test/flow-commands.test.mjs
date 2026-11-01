@@ -330,19 +330,27 @@ test('the first draft is created on the validated commit, with no tag in git', (
   assert.ok(create.some((arg) => arg.endsWith(`${PLUGIN_FOLDER}.zip`)));
   assert.ok(create.some((arg) => arg.endsWith('SHA256SUMS.txt')));
   assert.match(argAfter(create, '--notes'), /CPU idle 0\.00%/);
+  assert.match(argAfter(create, '--notes'), /^WRITE THIS FOR CUSTOMERS\./);
   assert.equal(git('tag', '--list', `v${version}`), '');
 });
 
-test('validating again replaces the draft instead of adding one', () => {
+test('validating again updates the draft instead of adding one, and keeps what a person wrote', () => {
   const version = nextPatch(currentVersion());
   const env = releaseBranchChecks(version);
-  const { calls } = flow('draft-release', { env, replies: [['api -X POST', { body: '## Changes' }], ['release list', [{ tagName: `v${version}`, isDraft: true }]]] });
+  const { calls } = flow('draft-release', {
+    env,
+    replies: [['api -X POST', { body: '## Changes' }], ['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { body: 'Better alerts.\n\n## Technical details\n\nOld numbers.' }]],
+  });
   assert.equal(callsTo(calls, 'release', 'create').length, 0);
-  assert.equal(argAfter(callsTo(calls, 'release', 'edit')[0], '--target'), git('rev-parse', 'HEAD'));
+  const [edit] = callsTo(calls, 'release', 'edit');
+  assert.equal(argAfter(edit, '--target'), git('rev-parse', 'HEAD'));
+  assert.match(argAfter(edit, '--notes'), /^Better alerts\./);
+  assert.match(argAfter(edit, '--notes'), /CPU idle 0\.00%/);
+  assert.doesNotMatch(argAfter(edit, '--notes'), /Old numbers/);
   assert.ok(callsTo(calls, 'release', 'upload')[0].includes('--clobber'));
 });
 
-test('the pull request to main opens with the box empty', () => {
+test('the pull request to main opens with its boxes empty', () => {
   const version = nextPatch(currentVersion());
   const env = releaseBranchChecks(version);
   const { calls } = flow('open-main-pull-request', { env, replies: [['pr list', []]] });
@@ -352,12 +360,14 @@ test('the pull request to main opens with the box empty', () => {
   assert.match(argAfter(create, '--body'), /- \[ \] Ran docs\/VERIFY\.md/);
 });
 
-test('validating again clears a box already ticked, because that test was of older code', () => {
+test('validating again clears boxes already ticked, because that test was of older code', () => {
   const env = releaseBranchChecks(nextPatch(currentVersion()));
   const { calls } = flow('open-main-pull-request', { env, replies: [['pr list', [{ number: 5 }]]] });
   assert.equal(callsTo(calls, 'pr', 'create').length, 0);
   assert.match(argAfter(callsTo(calls, 'pr', 'edit')[0], '--body'), /- \[ \] Ran docs\/VERIFY\.md/);
 });
+
+const WRITTEN = 'Better alerts.\n\n## Technical details\n\nNumbers.';
 
 function mergedRelease() {
   const version = nextPatch(currentVersion());
@@ -369,10 +379,32 @@ function mergedRelease() {
   return { version, validated };
 }
 
+test('notes still to write keep the release a draft, because customers read them, and the job can run again', () => {
+  const { version, validated } = mergedRelease();
+  const { status, calls, stderr } = flow('publish', {
+    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: 'WRITE THIS FOR CUSTOMERS. Replace it.' }]],
+  });
+  assert.equal(status, 1);
+  assert.match(stderr, /written for customers/);
+  assert.equal(callsTo(calls, 'release', 'edit').length, 0);
+  assert.equal(callsTo(calls, 'api', '-X', 'DELETE').length, 0, 'the release branch stays until it is out');
+});
+
+test('a version older than the newest tag stays a draft, because the store would show it as current', () => {
+  const { version, validated } = mergedRelease();
+  git('tag', 'v99.0.0');
+  const { status, calls, stderr } = flow('publish', {
+    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
+  });
+  assert.equal(status, 1);
+  assert.match(stderr, /v99\.0\.0 is already out/);
+  assert.equal(callsTo(calls, 'release', 'edit').length, 0);
+});
+
 test('merging into main publishes the draft and removes the release branch, and the tag lands on the validated commit', () => {
   const { version, validated } = mergedRelease();
   const { status, calls, stderr } = flow('publish', {
-    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated }]],
+    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
   });
   assert.equal(status, 0, stderr);
   assert.deepEqual(callsTo(calls, 'release', 'edit')[0], ['release', 'edit', `v${version}`, '--draft=false', '--latest']);
@@ -382,7 +414,7 @@ test('merging into main publishes the draft and removes the release branch, and 
 test('the latest branch follows the release when it exists, and without force', () => {
   const { version, validated } = mergedRelease();
   onOrigin('branch', 'latest', 'main');
-  const replies = [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated }]];
+  const replies = [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]];
 
   const { status, calls } = flow('publish', { replies });
 
@@ -397,7 +429,7 @@ test('a latest branch that cannot move does not undo the publishing', () => {
   const { version, validated } = mergedRelease();
   onOrigin('branch', 'latest', 'main');
   const { status, stdout, calls } = flow('publish', {
-    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated }], ['api -X PATCH', { fail: true }]],
+    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }], ['api -X PATCH', { fail: true }]],
   });
   assert.equal(status, 0);
   assert.equal(callsTo(calls, 'release', 'edit').length, 1);
@@ -406,7 +438,7 @@ test('a latest branch that cannot move does not undo the publishing', () => {
 
 test('with no latest branch, publishing does not create one', () => {
   const { version, validated } = mergedRelease();
-  const { calls } = flow('publish', { replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated }]] });
+  const { calls } = flow('publish', { replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]] });
   assert.equal(callsTo(calls, 'api', '-X', 'PATCH').length, 0);
 });
 
@@ -416,7 +448,7 @@ test('main with other code than the draft was validated on stays unpublished', (
   git('add', '.');
   git('commit', '-m', 'Something else');
   const { status, calls, stderr } = flow('publish', {
-    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated }]],
+    replies: [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: validated, body: WRITTEN }]],
   });
   assert.equal(status, 1);
   assert.match(stderr, /stays a draft/);
@@ -441,7 +473,7 @@ test('a failure to delete the release branch does not undo the publishing', () =
   const { status, stdout, calls } = flow('publish', {
     replies: [
       ['release list', [{ tagName: `v${version}`, isDraft: true }]],
-      ['release view', { targetCommitish: validated }],
+      ['release view', { targetCommitish: validated, body: WRITTEN }],
       ['api -X DELETE', { fail: true }],
     ],
   });
