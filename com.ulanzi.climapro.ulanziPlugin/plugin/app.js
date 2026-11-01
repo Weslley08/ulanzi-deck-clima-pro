@@ -14,7 +14,7 @@ const ACTION_UUID = `${PLUGIN_UUID}.weather`;
 const MAX_ATTEMPTS = 10;
 const MAX_RECONNECT_WAIT_MS = 30_000;
 const GLOBAL_SETTINGS_WAIT_MS = 3_000;
-// The manifest is the one place the version lives. The release workflow checks the tag against it.
+// The manifest is the one place the version lives. The release branch is checked against it.
 const { Version: VERSION } = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 
 silenceConsole();

@@ -1,6 +1,6 @@
 {
   "name": "clima-pro-plugin",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Runtime dependencies of the Clima Pro plugin. Shipped inside the plugin package.",
   "type": "module",
