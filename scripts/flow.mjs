@@ -76,6 +76,21 @@ function openPullRequest() {
   return createPullRequest(DEVELOP, branch, workPullRequest({ branch, subjects, template }));
 }
 
+/**
+ * A merge into main publishes, so what would stop the publishing has to stop the merge: found afterwards,
+ * main has moved and the release is still a draft. Without the token this is a fork, already refused.
+ */
+function draftProblem() {
+  const version = versionOfReleaseBranch(env('PR_HEAD'));
+  if (env('PR_BASE') !== MAIN || !version || !process.env.GH_TOKEN) return null;
+  const tag = `v${version}`;
+  if (!findDraft(tag)) return `There is no draft for ${tag} yet. Wait for the Delivery run on ${env('PR_HEAD')}, then run this check again.`;
+  const { body, targetCommitish } = ghJson('release', 'view', tag, '--json', 'body,targetCommitish');
+  if (notesStillToWrite(body)) return `Write the top of the notes of the draft ${tag} for customers, then run this check again, or change a box.`;
+  if (targetCommitish !== env('PR_HEAD_SHA')) return `The draft ${tag} holds ${targetCommitish}, not the end of this branch. Wait for the Delivery run, then run this check again.`;
+  return null;
+}
+
 /** The required check called Branch flow. Fork pull requests run it too, with no secret and a read-only token. */
 function checkPullRequest() {
   const problem = flowProblem({
@@ -84,7 +99,7 @@ function checkPullRequest() {
     sameRepo: process.env.PR_HEAD_REPO === process.env.GITHUB_REPOSITORY,
     version: manifestVersion(workDir),
     body: process.env.PR_BODY,
-  });
+  }) ?? draftProblem();
   if (problem) fail(problem);
   console.log('This pull request follows the branch flow.');
 }
@@ -216,7 +231,12 @@ function publish() {
   const version = manifestVersion(workDir);
   const tag = `v${version}`;
   const tags = tagsOnRepo();
-  if (tags.includes(version)) return console.log(`${tag} is already out, so there is nothing to publish.`);
+  if (tags.includes(version)) {
+    console.log(`${tag} is already out, so there is nothing to publish.`);
+    // It may have been published by hand, which leaves this part undone.
+    finishRelease(version);
+    return undefined;
+  }
   // The Community Store orders by publish date, so this would show an older version as the current one.
   if (tags.length && compareVersions(version, tags.at(-1)) < 0) fail(`v${tags.at(-1)} is already out, and ${tag} is older, so it stays a draft.`);
   if (!findDraft(tag)) fail(`There is no draft for ${tag}.`);
@@ -229,18 +249,23 @@ function publish() {
   }
   gh('release', 'edit', tag, '--draft=false', '--latest');
   console.log(`${tag} is published.`);
-  // The release is out by now, so neither of these may fail the job.
+  finishRelease(version);
+  return undefined;
+}
+
+/** The release is out by now, so neither of these may fail the job. */
+function finishRelease(version) {
+  const branch = releaseBranch(version);
   try {
-    deleteRemoteBranch(releaseBranch(version));
+    if (remoteBranches(`refs/heads/${branch}`).length) deleteRemoteBranch(branch);
   } catch {
-    console.log(`::warning::${releaseBranch(version)} could not be deleted.`);
+    console.log(`::warning::${branch} could not be deleted.`);
   }
   try {
     moveLatestBranch();
   } catch {
-    console.log(`::warning::The ${LATEST} branch could not follow ${tag}.`);
+    console.log(`::warning::The ${LATEST} branch could not follow v${version}.`);
   }
-  return undefined;
 }
 
 /**

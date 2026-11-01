@@ -400,8 +400,62 @@ function mergedRelease() {
   const validated = git('rev-parse', 'HEAD');
   git('switch', '--quiet', 'main');
   git('merge', '--no-ff', 'develop', '-m', `Merge pull request #9 from owner/release/v${version}`);
+  onOrigin('branch', `release/v${version}`, 'main');
   return { version, validated };
 }
+
+const RELEASE_PR = (version) => ({ PR_BASE: 'main', PR_HEAD: `release/v${version}`, PR_HEAD_REPO: 'owner/repo', PR_HEAD_SHA: 'abc123', PR_BODY: '- [x] Ran docs/VERIFY.md on a device' });
+
+function checkReleasePr(replies, env = {}) {
+  const version = currentVersion();
+  return flow('check-pull-request', { env: { ...RELEASE_PR(version), ...env }, replies: replies(version) });
+}
+
+test('the merge into main waits for the notes, so it can never leave main ahead of a draft', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'abc123', body: 'WRITE THIS FOR CUSTOMERS.' }]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /Write the top of the notes/);
+});
+
+test('the merge into main waits for a draft to exist', () => {
+  const { status, stderr } = checkReleasePr(() => [['release list', []]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /There is no draft/);
+});
+
+test('the merge into main waits for a draft of the end of the branch, after a newer merge', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'older', body: WRITTEN }]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /holds older/);
+});
+
+test('with the notes written and the draft up to date, the merge into main may go ahead', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'abc123', body: WRITTEN }]]);
+  assert.equal(status, 0, stderr);
+});
+
+test('the draft is not read for a pull request to develop or from a fork, which has no token', () => {
+  const version = currentVersion();
+  const toDevelop = flow('check-pull-request', { env: { ...RELEASE_PR(version), PR_BASE: 'develop', PR_HEAD: 'fix/x' } });
+  assert.equal(toDevelop.status, 0);
+  assert.equal(callsTo(toDevelop.calls, 'release').length, 0);
+  assert.equal(flow('check-pull-request', { env: { ...RELEASE_PR(version), GH_TOKEN: '' } }).status, 0);
+  rmSync(log, { force: true });
+  const toAnotherBranch = flow('check-pull-request', { env: { ...RELEASE_PR(version), PR_BASE: 'feat/x' } });
+  assert.equal(toAnotherBranch.status, 0);
+  assert.equal(toAnotherBranch.calls.length, 0, 'only a merge into main publishes');
+});
+
+test('a release published by hand gets its branch removed and latest moved on the next run', () => {
+  const version = currentVersion();
+  onOrigin('branch', `release/v${version}`, 'main');
+  onOrigin('branch', 'latest', 'main');
+  const { status, calls } = flow('publish');
+  assert.equal(status, 0);
+  assert.equal(callsTo(calls, 'release').length, 0);
+  assert.equal(callsTo(calls, 'api', '-X', 'DELETE')[0][3], `repos/{owner}/{repo}/git/refs/heads/release/v${version}`);
+  assert.equal(callsTo(calls, 'api', '-X', 'PATCH')[0][3], 'repos/{owner}/{repo}/git/refs/heads/latest');
+});
 
 test('notes still to write keep the release a draft, because customers read them, and the job can run again', () => {
   const { version, validated } = mergedRelease();
@@ -682,6 +736,49 @@ test('running the repository setup again updates the rule and adds no second pol
   assert.match(rule.query, /updateBranchProtectionRule/);
   assert.equal(rule.variables.input.branchProtectionRuleId, 'P1');
   assert.equal(callsTo(calls, 'api', '-X', 'POST').length, 0);
+});
+
+const ANALYSES = 'repos/Weslley08/ulanzi-deck-clima-pro/code-scanning/analyses';
+const GATE = '.github/workflows/gate.yml:analyze';
+const OLD = '.github/workflows/codeql.yml:analyze';
+const ANALYSES_ON_DEVELOP = [
+  { id: 4, category: GATE, deletable: true },
+  { id: 3, category: GATE, deletable: false },
+  { id: 2, category: OLD, deletable: true },
+  { id: 1, category: OLD, deletable: false },
+];
+const NO_RULES = ['api graphql', { data: { repository: { id: 'R1', branchProtectionRules: { nodes: [] } } } }];
+const ANALYSIS_REPLIES = [
+  NO_RULES,
+  [`api ${ANALYSES}?ref=refs/heads/develop`, ANALYSES_ON_DEVELOP],
+  [`api ${ANALYSES}?ref=refs/heads/main`, []],
+  [`api -X DELETE ${ANALYSES}/2?confirm_delete=true`, { confirm_delete_url: `https://api.github.com/${ANALYSES}/1?confirm_delete=true` }],
+  [`api -X DELETE https://api.github.com/${ANALYSES}/1?confirm_delete=true`, { confirm_delete_url: null }],
+];
+
+test('the whole set of analyses under an old workflow name is removed, and the current ones stay', () => {
+  const { status, stdout, calls, stderr } = setupGithub([], ANALYSIS_REPLIES);
+  assert.equal(status, 0, stderr);
+  assert.deepEqual(callsTo(calls, 'api', '-X', 'DELETE').map((args) => args[3]), [`${ANALYSES}/2?confirm_delete=true`, `https://api.github.com/${ANALYSES}/1?confirm_delete=true`]);
+  assert.match(stdout, /Done: remove the CodeQL analyses named \.github\/workflows\/codeql\.yml:analyze from develop/);
+});
+
+test('with only the current analyses, or none readable, nothing is removed', () => {
+  const current = setupGithub([], [NO_RULES, [`api ${ANALYSES}?ref=refs/heads/develop`, ANALYSES_ON_DEVELOP.slice(0, 2)], [`api ${ANALYSES}?ref=refs/heads/main`, { fail: true }]]);
+  assert.equal(current.status, 0);
+  assert.equal(callsTo(current.calls, 'api', '-X', 'DELETE').length, 0);
+});
+
+test('the name kept for CodeQL matches the workflow, so the current analyses are never removed', () => {
+  assert.match(readFileSync(join(root, '.github', 'workflows', 'gate.yml'), 'utf8'), /^ {2}analyze:$/m);
+  assert.match(readFileSync(join(root, 'scripts', 'setup-github.mjs'), 'utf8'), new RegExp(`CODEQL_CATEGORY = '${GATE.replaceAll('.', '\\.')}'`));
+});
+
+test('a dry run says it would remove the old analyses, and removes nothing', () => {
+  const { status, stdout, calls } = setupGithub(['--dry-run'], ANALYSIS_REPLIES);
+  assert.equal(status, 0);
+  assert.equal(callsTo(calls, 'api', '-X', 'DELETE').length, 0);
+  assert.match(stdout, /Would: remove the CodeQL analyses named \.github\/workflows\/codeql\.yml:analyze from develop/);
 });
 
 test('a dry run of the repository setup changes nothing and says what it would do', () => {

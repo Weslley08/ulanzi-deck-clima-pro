@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 const REPOSITORY = 'Weslley08/ulanzi-deck-clima-pro';
 const ENVIRONMENT = 'release-validation';
 const RELEASE_PATTERN = 'release/v*';
+const CODEQL_CATEGORY = '.github/workflows/gate.yml:analyze';
 
 // A required check that never reports blocks every merge, so these are the names seen on a real pull request.
 // CodeQL reports even where its base was never analyzed: it did on the first pull request to develop.
@@ -75,6 +76,33 @@ function environmentHasPolicy() {
   }
 }
 
+function analysesOn(branch) {
+  try {
+    return JSON.parse(gh(['api', `repos/${REPOSITORY}/code-scanning/analyses?ref=refs/heads/${branch}&per_page=100`]));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * CodeQL names its analyses after the workflow file. With an old name still on a branch, each pull request to it
+ * says "1 configuration not found": the check goes neutral, so new alerts neither show as new nor block the merge.
+ * Only the newest analysis of a set can be deleted, and each deletion names the next one.
+ */
+function removeOldCodeqlAnalyses(branch) {
+  const old = analysesOn(branch).filter(({ category, deletable }) => deletable && !category.startsWith(CODEQL_CATEGORY));
+  for (const { id, category } of old) {
+    const description = `remove the CodeQL analyses named ${category} from ${branch}`;
+    if (dryRun) {
+      console.log(`Would: ${description}`);
+      continue;
+    }
+    let url = `repos/${REPOSITORY}/code-scanning/analyses/${id}?confirm_delete=true`;
+    while (url) url = JSON.parse(gh(['api', '-X', 'DELETE', url])).confirm_delete_url;
+    console.log(`Done: ${description}`);
+  }
+}
+
 change('allow merge commits only, and turn on auto-merge', ['api', '-X', 'PATCH', `repos/${REPOSITORY}`], {
   allow_merge_commit: true,
   allow_squash_merge: false,
@@ -89,5 +117,6 @@ if (!environmentHasPolicy()) {
 }
 for (const branch of ['develop', 'main']) {
   change(`protect ${branch}`, ['api', '-X', 'PUT', `repos/${REPOSITORY}/branches/${branch}/protection`], protection(CHECKS));
+  removeOldCodeqlAnalyses(branch);
 }
 protectReleaseBranches();

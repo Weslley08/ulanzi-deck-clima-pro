@@ -120,7 +120,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 
 - **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the zip and the technical details, keeps the text you wrote above them, and clears the boxes. No tag has to move, because a draft has none yet.
 - **A problem after publishing:** the next version fixes it. A number is never reused, and an older version is never published after a newer one, because the Community Store orders by publish date and would show it as current.
-- **A release that stayed a draft after the merge:** the Delivery run fails if the top of the notes was not written. Write it and run that job again.
+- **Do not publish a draft by hand.** The merge does it. **Branch flow** refuses the merge while the top of the notes is not written or the draft is not of the end of the branch. It reads the draft when a box changes, so write the notes first. If the Delivery run still fails after the merge, fix what it names and run that job again.
 - **Something that reached `main` directly:** a pull request from `main` to `develop` opens and merges itself, and asks for no new version.
 - **Merge commits only:** the repository allows no other kind, because the flow reads the merged branches from them and the release branch must end up inside `main`.
 - **Dependabot:** its security updates always open against `main`, whatever the configuration says, so change their base to `develop`.
@@ -129,7 +129,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 
 Each of these is needed once, and a step that lacks a secret fails and names it.
 
-- **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge and creates the environment below. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
+- **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge, creates the environment below and removes CodeQL analyses left under an old workflow name. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
 - **`AUTOMATION_TOKEN`:** a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with read and write on **Contents** and **Pull requests**. A pull request opened with the workflow's own token leaves the Gate waiting for a click on "Approve workflows to run". Set it with `gh secret set AUTOMATION_TOKEN`, and again when it expires.
 - **`WEATHERAPI_KEY`:** a WeatherAPI.com key for the live tests, about 40 calls per validation. Set it with `gh secret set WEATHERAPI_KEY --env release-validation`. That environment only gives it to `release/v*` branches.
 
