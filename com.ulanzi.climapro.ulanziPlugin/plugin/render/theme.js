@@ -19,8 +19,13 @@ export class Theme {
   }
 
   render(view) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">${this.background(view)}${this.body(view)}</svg>`;
+  }
+
+  /** Everything on the face except its background. An alert banner draws this smaller. */
+  body(view) {
     const body = this[view.screen]?.(view) ?? this.message(view);
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" width="${SIZE}" height="${SIZE}">${this.background(view)}${body}${view.stale ? this.staleMark(view) : ''}</svg>`;
+    return `${body}${view.stale ? this.staleMark(view) : ''}`;
   }
 
   background(view) {

@@ -67,6 +67,98 @@ for (const theme of THEME_IDS) {
   });
 }
 
+const ALERT_PAGE = {
+  screen: 'alertPage',
+  severity: 'EXTREME',
+  title: 'CHUVAS INTENSAS',
+  description: 'Alerta em Ivolândia de risco ALTO de alagamentos e enxurradas.',
+  until: '22:00',
+  index: 0,
+  total: 2,
+  temp: '27°',
+  city: 'Ivolândia',
+};
+
+for (const theme of THEME_IDS) {
+  test(`${theme}: with no alert, the face is exactly what it was`, async () => {
+    for (const screen of ['now', 'details']) {
+      const view = sampleView(theme, screen);
+      assert.equal(await faceSvg(view), getTheme(theme).render(view));
+      assert.ok(!(await faceSvg(view)).includes('stroke-opacity=".45"'));
+    }
+  });
+
+  test(`${theme}: a banner keeps the whole forecast, only smaller, and every state renders`, async () => {
+    for (const screen of ['now', 'details']) {
+      const view = sampleView(theme, screen);
+      const forecast = getTheme(theme).body(view);
+      for (const severity of ['SEVERE', 'EXTREME']) {
+        const svg = await faceSvg({ ...view, alert: { severity, pulse: 0, uncertain: false } });
+        assert.ok(svg.includes(forecast), `${severity}: every part of the forecast is drawn, untouched`);
+        const [, scale] = svg.match(/scale\((0\.\d+)\)">/);
+        assert.ok(Number(scale) >= 0.84, `${severity}: still readable at ${scale}`);
+        assert.deepEqual(pngSize(await svgToPng(svg)), [SIZE, SIZE]);
+      }
+    }
+  });
+
+  test(`${theme}: a small mark leaves the forecast at full size and in place`, async () => {
+    const view = sampleView(theme, 'now');
+    for (const alert of [{ severity: 'MODERATE', pulse: 0, uncertain: false }, { severity: 'UNKNOWN', pulse: 0, uncertain: false }, { severity: null, pulse: 0, uncertain: true }]) {
+      const svg = await faceSvg({ ...view, alert });
+      assert.ok(svg.includes(`${getTheme(theme).background(view)}${getTheme(theme).body(view)}`));
+      await svgToPng(svg);
+    }
+  });
+
+  test(`${theme}: a stale forecast and an error screen can both carry an alert`, async () => {
+    const alert = { severity: 'EXTREME', pulse: 2, uncertain: true };
+    await svgToPng(await faceSvg({ ...sampleView(theme, 'now'), stale: true, alert }));
+    await svgToPng(await faceSvg({ ...sampleMessage(theme), alert }));
+  });
+
+  test(`${theme}: the alert page renders, with text from the feed unable to inject markup`, async () => {
+    const svg = await faceSvg({
+      ...ALERT_PAGE,
+      theme,
+      title: '"/><image href="http://evil.example/x.png"/>',
+      description: '<script>alert(1)</script> &lt;b&gt; '.repeat(40),
+      city: '"><script>',
+    });
+    assert.ok(!svg.includes('evil.example'));
+    assert.ok(!svg.includes('<script'));
+    assert.ok(!svg.includes('<image'));
+    assert.deepEqual(pngSize(await svgToPng(svg)), [SIZE, SIZE]);
+  });
+}
+
+test('severe and extreme look different, and neither depends on color alone', async () => {
+  const view = sampleView('sky');
+  const severe = await faceSvg({ ...view, alert: { severity: 'SEVERE', pulse: 0, uncertain: false } });
+  const extreme = await faceSvg({ ...view, alert: { severity: 'EXTREME', pulse: 0, uncertain: false } });
+  const withoutColors = (svg) => svg.replace(/#[0-9A-Fa-f]{6}/g, '');
+  assert.notEqual(withoutColors(severe), withoutColors(extreme), 'someone who cannot tell the colors apart still sees a difference');
+});
+
+test('the extreme pulse changes only the color of the frame', async () => {
+  const view = sampleView('sky');
+  const frames = await Promise.all([0, 1, 2].map((pulse) => faceSvg({ ...view, alert: { severity: 'EXTREME', pulse, uncertain: false } })));
+  assert.equal(new Set(frames).size, 3, 'bright, middle and dim');
+  const withoutFrameColor = frames.map((svg) => svg.replace(/stroke="#(FF2A2A|DE1F1F|B01414)"/, 'stroke="frame"'));
+  assert.equal(new Set(withoutFrameColor).size, 1);
+});
+
+test('the alert page shows the position only when there is more than one', async () => {
+  const single = await faceSvg({ ...ALERT_PAGE, theme: 'sky', total: 1 });
+  const several = await faceSvg({ ...ALERT_PAGE, theme: 'sky' });
+  assert.ok(several.length > single.length);
+});
+
+test('each animation step reuses one render', async () => {
+  const view = { ...sampleView('sky'), alert: { severity: 'EXTREME', pulse: 1, uncertain: false } };
+  assert.equal(await renderFace(view), await renderFace({ ...view }));
+});
+
 test('the stale mark changes the face', async () => {
   const fresh = sampleView('sky');
   assert.notEqual(await faceSvg({ ...fresh, stale: true }), await faceSvg(fresh));

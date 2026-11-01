@@ -63,7 +63,7 @@ export function parseCurrent(body) {
   if (!location || !current) throw new WeatherError('server');
   const updatedEpoch = toNumber(current.last_updated_epoch);
   return {
-    location: { name: String(location.name ?? ''), region: String(location.region ?? ''), country: String(location.country ?? '') },
+    location: { name: String(location.name ?? ''), region: String(location.region ?? ''), country: String(location.country ?? ''), lat: toNumber(location.lat), lon: toNumber(location.lon) },
     current: {
       condition: conditionFromCode(current.condition?.code),
       isDay: Number(current.is_day) === 1,

@@ -13,3 +13,5 @@ Clima Pro is licensed under Apache-2.0. It ships or is derived from the followin
 | [VT323](https://github.com/phoikoi/VT323) | Glyph outlines in `plugin/render/glyphs` | SIL OFL 1.1 | `licenses/OFL-vt323.txt` |
 
 Weather data is provided by [WeatherAPI.com](https://www.weatherapi.com/) under its own terms. No WeatherAPI.com data or artwork is included in this package.
+
+Alerts in Brazil come from the Defesa Civil's public IDAP feed, read while the plugin runs. No alert data is included in this package, and this project is not affiliated with the Defesa Civil.

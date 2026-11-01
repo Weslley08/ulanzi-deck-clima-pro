@@ -23,6 +23,8 @@ Open a pull request against `main`. CI runs the tests on Windows, macOS and Linu
 | Command | What it does |
 |---|---|
 | `npm test` | All tests. The panel tests skip if no Chromium is installed; set `CHROME_PATH` to use one. |
+| `npm run typecheck` | Checks the Defesa Civil modules against `alert-types.d.ts`. Nothing is built: the plugin is plain JavaScript. |
+| `npm run test:live:alerts` | Checks our assumptions against the real Defesa Civil feed and lists the alerts in force. Needs no key, and downloads the feed a few times, several MB each. |
 | `npm run build:assets` | Regenerates theme pictures, icons, store art and `docs/themes.png`. |
 | `npm run build:glyphs` | Regenerates font outlines. Only needed for a new font or character. |
 | `npm run package` | Builds `dist/com.ulanzi.climapro.ulanziPlugin.zip`. |
@@ -71,6 +73,7 @@ Fonts must have a license that allows bundling, recorded in `THIRD_PARTY_NOTICES
 - **Spend the user's machine and quota carefully.** Nothing polls while no key is on screen, keys showing one place share one request, and an unchanged image is not sent again. The API's `last_updated` sets when to ask next, so there is no refresh setting.
 - **Weather data lives in memory for at most 60 minutes.** WeatherAPI.com's terms set that limit on current conditions.
 - **Every failed press calls `showAlert`.** The store guidelines require it.
+- **An alert never replaces the forecast by itself, and a failed check never reads as "no alerts".** Only Defesa Civil entries from the IDAP feed count. See [docs/DEFESA-CIVIL.md](docs/DEFESA-CIVIL.md).
 - **Do not edit `libs/` or `plugin/ulanzi-api/`.** They are verbatim copies of the Ulanzi SDK pinned in `sdk-lock.json`, and CI fails if they change. To update them, review the upstream diff, copy the files, run `node scripts/check-sdk.mjs --write`, and update the commits in the lock file.
 - **Runtime dependencies need a good reason.** Each one ships to every user. No install scripts and no native binaries.
 

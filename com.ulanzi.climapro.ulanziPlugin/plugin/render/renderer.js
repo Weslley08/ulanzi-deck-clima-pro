@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
+import { ALERT_FONT, ALERT_PAGE, alertFace } from './alert-layer.js';
 import { loadFont } from './text.js';
 import { getTheme } from './themes/index.js';
 import { SIZE } from './theme.js';
@@ -32,8 +33,9 @@ export async function svgToPng(svg, width = SIZE) {
 
 export async function faceSvg(view) {
   const theme = getTheme(view.theme);
-  await Promise.all(theme.fontIds().map(loadFont));
-  return theme.render(view);
+  const hasAlert = view.alert || view.screen === ALERT_PAGE;
+  await Promise.all((hasAlert ? [...theme.fontIds(), ALERT_FONT] : theme.fontIds()).map(loadFont));
+  return alertFace(theme, view) ?? theme.render(view);
 }
 
 /**

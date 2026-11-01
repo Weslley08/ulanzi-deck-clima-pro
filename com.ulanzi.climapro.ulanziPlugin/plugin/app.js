@@ -1,5 +1,7 @@
 // Main service: routes host events to one WeatherKey per key on the deck.
 import { readFileSync } from 'node:fs';
+import { fetchDefesaCivilFeed } from './defesa-civil-api.js';
+import { DefesaCivilAlertService } from './defesa-civil-service.js';
 import { HostConnection, silenceConsole } from './host.js';
 import { clearFaceCache } from './render/renderer.js';
 import { normalizeApiKey } from './settings.js';
@@ -24,13 +26,12 @@ const report = (message, done) => process.stderr.write(`[Clima Pro] ${message}\n
 process.stderr.on('error', () => {});
 
 const $UD = new HostConnection();
-const hub = new WeatherHub({
-  fetchCurrent,
-  log: (message) => {
-    report(message);
-    $UD.logMessage(message, 'warn');
-  },
-});
+const logWarning = (message) => {
+  report(message);
+  $UD.logMessage(message, 'warn');
+};
+const hub = new WeatherHub({ fetchCurrent, log: logWarning });
+const alerts = new DefesaCivilAlertService({ fetchFeed: fetchDefesaCivilFeed, log: logWarning });
 const keys = new Map();
 
 /** The SDK says the main service must pass a context here, so this has to wait for a key on the deck. */
@@ -47,7 +48,7 @@ function askForApiKey(context) {
 function keyFor(jsn) {
   let key = keys.get(jsn.context);
   if (!key && jsn.uuid === ACTION_UUID) {
-    key = new WeatherKey(jsn.context, { host: $UD, hub, version: VERSION });
+    key = new WeatherKey(jsn.context, { host: $UD, hub, alerts, version: VERSION });
     keys.set(jsn.context, key);
     key.updateSettings(jsn.param ?? {});
     if (hub.keyState !== 'ready') askForApiKey(jsn.context);

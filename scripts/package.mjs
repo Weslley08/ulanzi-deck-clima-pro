@@ -31,7 +31,8 @@ const files = readdirSync(pluginDir).filter((name) => LANGUAGE_FILE.test(name)).
 for (const name of TOP_LEVEL) {
   const full = join(pluginDir, name);
   if (!existsSync(full)) throw new Error(`missing from the plugin folder: ${name}`);
-  files.push(...(statSync(full).isDirectory() ? walk(full) : [full]));
+  // Type declarations are only read by `npm run typecheck`.
+  files.push(...(statSync(full).isDirectory() ? walk(full).filter((file) => !file.endsWith('.d.ts')) : [full]));
 }
 
 for (const dependency of runtimeDependencies()) {

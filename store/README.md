@@ -27,6 +27,8 @@ Live weather on your keys, in the theme you choose. Six themes, with the latest 
 
 Show the latest conditions and details on your deck, with six themes to choose from: Sky, Minimal, Thermal, LCD, Neon and Almanac. Press a key to switch screens.
 
+In Brazil, official Defesa Civil alerts (IDAP feed) appear over the forecast. This does not replace official channels. It can be turned off, and it downloads several MB every 5 minutes.
+
 Setup: create a free key at weatherapi.com, paste it into the settings panel, and pick a place and a theme.
 
 Weather data by WeatherAPI.com. Weather information displayed here is provided for general informational purposes only. Forecasts and conditions are probabilistic and may not be accurate for your specific location or time. This data should not be used as the sole basis for decisions involving personal safety, aviation, marine navigation, emergency planning, or other safety-critical activities. Always consult official meteorological services and relevant authorities for decisions where accuracy is critical.
@@ -39,6 +41,7 @@ Open source, Apache-2.0.
 - [ ] The status note at the top of the main README is removed
 - [ ] No plugin named Clima Pro exists on the marketplace (could not be checked from outside the site)
 - [ ] The store's terms of use were read. They were not available publicly when this was written.
+- [ ] The Defesa Civil was asked whether reusing the IDAP feed this way is acceptable. It publishes no terms for it (see [docs/DEFESA-CIVIL.md](../docs/DEFESA-CIVIL.md))
 - [ ] [docs/VERIFY.md](../docs/VERIFY.md) passed on a real device
 - [ ] `npm run verify:package` passes, and the Auto check panel on the form is all green
 - [ ] Copyright lines are on the store page or the repository, not in the settings panel

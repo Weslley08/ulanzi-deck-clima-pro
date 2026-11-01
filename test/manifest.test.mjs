@@ -72,6 +72,18 @@ test('the store text carries the disclaimer the WeatherAPI.com terms require', (
   assert.match(manifest.Detail, /WeatherAPI\.com/);
 });
 
+test('the text for the store form fits its limits and carries what it must', () => {
+  const store = readFileSync(new URL('../store/README.md', import.meta.url), 'utf8');
+  const field = (label, next) => store.split(label)[1].split(next)[0].trim();
+  const summary = field('**Summary (300 characters at most):**', '**Details');
+  const details = field('**Details (1000 characters at most):**', '## Before submitting');
+  assert.ok(summary.length <= 300, `summary has ${summary.length} characters`);
+  assert.ok(details.length <= 1000, `details have ${details.length} characters`);
+  assert.ok(details.includes(JSON.parse(read('en.json')).Localization.disclaimer));
+  assert.match(details, /Defesa Civil/);
+  assert.match(details, /official channels/);
+});
+
 test('English is present so every other language has a fallback', () => {
   assert.ok(languages.includes('en.json'));
 });
@@ -103,6 +115,19 @@ test('the inspector offers exactly the themes and screens the code accepts', () 
   };
   assert.deepEqual(selectValues('screen'), SCREENS);
   assert.deepEqual(selectValues('unit'), ['c', 'f']);
+  assert.deepEqual(selectValues('alerts'), ['on', 'off']);
+});
+
+test('the panel has one place field, because alerts reuse the place of the weather', () => {
+  assert.equal([...inspectorHtml.matchAll(/type="text"/g)].length, 1);
+  assert.equal([...inspectorHtml.matchAll(/name="location"/g)].length, 1);
+});
+
+test('the store text says where alerts come from and that they do not replace official channels', () => {
+  assert.match(manifest.Detail, /Defesa Civil/);
+  assert.match(manifest.Detail, /IDAP/);
+  assert.match(manifest.Detail, /official channels/);
+  assert.ok(manifest.Detail.length <= 1000, `${manifest.Detail.length} characters`);
 });
 
 test('the inspector has a thumbnail for every theme', () => {
@@ -131,7 +156,13 @@ test('every string marked in the inspector can be translated', () => {
 
 test('settings from an old version or a bad host value fall back to defaults', () => {
   const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', location: 42 });
-  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', placeId: '', unit: 'c', screen: 'now' });
+  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', placeId: '', unit: 'c', screen: 'now', alerts: 'on' });
+});
+
+test('alerts are on unless the key says off, including keys saved before they existed', () => {
+  assert.equal(normalizeSettings({}).alerts, 'on');
+  assert.equal(normalizeSettings({ alerts: 'nope' }).alerts, 'on');
+  assert.equal(normalizeSettings({ alerts: 'off' }).alerts, 'off');
 });
 
 test('a place chosen from the list is asked for by ID, and anything else by its text', () => {

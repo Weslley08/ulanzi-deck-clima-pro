@@ -30,6 +30,7 @@ jobs:
             test "$found" = "$version" || { echo "$file says $found, tag says $version"; exit 1; }
           done
       - run: npm run setup
+      - run: npm run typecheck
       - run: npm test
       - run: npm run audit
       - run: npm run check:sdk

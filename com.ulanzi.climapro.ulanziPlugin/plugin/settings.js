@@ -17,6 +17,7 @@ export function normalizeSettings(raw = {}) {
     placeId: PLACE_ID.test(raw.placeId) ? String(raw.placeId) : '',
     unit: oneOf(raw.unit, ['c', 'f'], 'c'),
     screen: oneOf(raw.screen, SCREENS, SCREENS[0]),
+    alerts: oneOf(raw.alerts, ['on', 'off'], 'on'),
   };
 }
 
