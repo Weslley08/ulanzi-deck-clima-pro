@@ -211,6 +211,11 @@ test('the saved key fills its field, hidden', options, async () => {
   assert.equal(await run(`document.querySelector('#apiKey').type`), 'password');
 });
 
+test('the version from the plugin shows up', options, async () => {
+  fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'about', version: '1.2.3' } });
+  await until(`document.querySelector('#version').textContent === 'Clima Pro v1.2.3'`);
+});
+
 test('status from the plugin shows up, and a place name cannot inject markup', options, async () => {
   fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'status', state: 'ok', place: '<img src=x onerror="window.pwned=1">' } });
   await until(`document.querySelector('#status').textContent.includes('Ligado')`);

@@ -93,6 +93,22 @@ Then copy the plugin folder into the simulator's `plugins/` folder and start the
 node plugin/app.js 127.0.0.1 39069 en
 ```
 
+## Releasing
+
+A tag, its release and the plugin all carry the same number. `Version` in `manifest.json` is the source: the settings panel shows it at the bottom as `Clima Pro v1.2.3`, so a user can tell which release they run. A test fails if either `package.json` disagrees, and the release workflow fails if the tag does.
+
+1. In a pull request, raise the version in `manifest.json` and both `package.json` files, following semantic versioning.
+2. After it merges, tag that commit on `main`:
+
+   ```bash
+   git tag -a v1.2.3 -m "Clima Pro 1.2.3"
+   git push origin v1.2.3
+   ```
+
+3. The release workflow repeats every check and creates a draft release with the zip and its checksum.
+4. Test that zip with [docs/VERIFY.md](docs/VERIFY.md), run `npm run measure`, and put both results in the release notes.
+5. Publish the draft. If the manual check fails, fix it and release a new number instead of moving the tag.
+
 ## Security
 
 Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).

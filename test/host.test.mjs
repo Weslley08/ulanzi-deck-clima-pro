@@ -190,6 +190,14 @@ test('the inspector gets a status when it opens', async () => {
   assert.equal(status.payload.place, 'São Paulo, Brazil');
 });
 
+test('the inspector is told the version in the manifest', async () => {
+  const { Version } = JSON.parse(readFileSync(new URL('../manifest.json', pathToFileURL(APP)), 'utf8'));
+  send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'hello' } }) });
+  const about = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'about');
+  assert.equal(about.key, '2_0');
+  assert.equal(about.payload.version, Version);
+});
+
 test('the inspector gets place suggestions', async () => {
   send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'search', q: 'Sao Pa' } }) });
   const reply = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'suggestions');

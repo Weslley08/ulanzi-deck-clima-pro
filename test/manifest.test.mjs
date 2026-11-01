@@ -59,6 +59,13 @@ test('the runtime version requirement uses the supported field', () => {
   assert.equal(manifest.Software.MinimumVersion, undefined);
 });
 
+test('every file agrees on the version, because the release tag must match them all', () => {
+  const rootPackage = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(manifest.Version, /^\d+\.\d+\.\d+$/);
+  assert.equal(rootPackage.version, manifest.Version);
+  assert.equal(JSON.parse(read('package.json')).version, manifest.Version);
+});
+
 test('the store text carries the disclaimer the WeatherAPI.com terms require', () => {
   const en = JSON.parse(read('en.json'));
   assert.ok(manifest.Detail.includes(en.Localization.disclaimer));

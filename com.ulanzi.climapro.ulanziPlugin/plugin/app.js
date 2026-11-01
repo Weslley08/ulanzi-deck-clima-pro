@@ -1,4 +1,5 @@
 // Main service: routes host events to one WeatherKey per key on the deck.
+import { readFileSync } from 'node:fs';
 import { HostConnection, silenceConsole } from './host.js';
 import { clearFaceCache } from './render/renderer.js';
 import { normalizeApiKey } from './settings.js';
@@ -11,6 +12,8 @@ const ACTION_UUID = `${PLUGIN_UUID}.weather`;
 const MAX_ATTEMPTS = 10;
 const MAX_RECONNECT_WAIT_MS = 30_000;
 const GLOBAL_SETTINGS_WAIT_MS = 3_000;
+// The manifest is the one place the version lives. The release workflow checks the tag against it.
+const { Version: VERSION } = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 
 silenceConsole();
 
@@ -21,7 +24,7 @@ const keys = new Map();
 function keyFor(jsn) {
   let key = keys.get(jsn.context);
   if (!key && jsn.uuid === ACTION_UUID) {
-    key = new WeatherKey(jsn.context, { host: $UD, hub });
+    key = new WeatherKey(jsn.context, { host: $UD, hub, version: VERSION });
     keys.set(jsn.context, key);
     key.updateSettings(jsn.param ?? {});
   }
