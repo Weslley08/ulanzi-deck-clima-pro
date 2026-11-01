@@ -89,5 +89,8 @@ export async function fetchCurrent(apiKey, query) {
 export async function searchLocations(apiKey, query) {
   const body = await request('search.json', { key: apiKey, q: query });
   if (!Array.isArray(body)) return [];
-  return body.slice(0, MAX_SUGGESTIONS).map((place) => [place.name, place.region, place.country].filter(Boolean).join(', '));
+  return body.slice(0, MAX_SUGGESTIONS).map((place) => ({
+    id: toNumber(place.id),
+    label: [place.name, place.region, place.country].filter(Boolean).join(', '),
+  }));
 }

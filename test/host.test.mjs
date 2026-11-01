@@ -187,7 +187,7 @@ test('the inspector gets a status when it opens', async () => {
   const status = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'status');
   assert.equal(status.key, '2_0');
   assert.equal(status.payload.state, 'ok');
-  assert.equal(status.payload.place, 'São Paulo, Brazil');
+  assert.equal(status.payload.place, 'São Paulo, Sao Paulo, Brazil');
 });
 
 test('the inspector is told the version in the manifest', async () => {
@@ -201,7 +201,15 @@ test('the inspector is told the version in the manifest', async () => {
 test('the inspector gets place suggestions', async () => {
   send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'search', q: 'Sao Pa' } }) });
   const reply = await waitFor((m) => m.cmd === 'sendToPropertyInspector' && m.payload?.type === 'suggestions');
-  assert.deepEqual(reply.payload.items, ['São Paulo, Sao Paulo, Brazil']);
+  assert.deepEqual(reply.payload.items, [{ id: 290780, label: 'São Paulo, Sao Paulo, Brazil' }]);
+});
+
+test('a place chosen from the list is requested by its ID, not its text', async () => {
+  send({ cmd: 'add', ...keyMessage('5_0', 'a6', { param: { location: 'Jabaquara, Espirito Santo, Brazil', placeId: '277112' } }) });
+  await waitFor(iconFor('5_0'));
+  const lines = requests().filter((line) => line.startsWith('/v1/current.json'));
+  assert.ok(lines.some((line) => line.startsWith('/v1/current.json id:277112 ')), lines.join('\n'));
+  assert.ok(!lines.some((line) => line.includes('Jabaquara')), lines.join('\n'));
 });
 
 test('a too short search does not spend a call', async () => {

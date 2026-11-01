@@ -2,7 +2,7 @@
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 
 const API_KEY_FORMAT = /^[A-Za-z0-9]{10,64}$/;
-const DEFAULTS = { theme: 'sky', location: '', unit: 'c', screen: 'now' };
+const DEFAULTS = { theme: 'sky', location: '', placeId: '', unit: 'c', screen: 'now' };
 const MIN_SEARCH_LENGTH = 3;
 const SEARCH_DELAY_MS = 500;
 const LINKS = { getKey: 'https://www.weatherapi.com/signup', attribution: 'https://www.weatherapi.com/' };
@@ -50,8 +50,12 @@ function requestSuggestions() {
 }
 
 function showSuggestions(items) {
-  // Place names come from a remote API: textContent keeps them from being read as markup.
-  suggestions.replaceChildren(...items.map((textContent) => Object.assign(document.createElement('button'), { type: 'button', className: 'suggestion', textContent })));
+  suggestions.replaceChildren(...items.map(({ id, label }) => {
+    // Place names come from a remote API: textContent keeps them from being read as markup.
+    const button = Object.assign(document.createElement('button'), { type: 'button', className: 'suggestion', textContent: label });
+    button.dataset.placeId = id ?? '';
+    return button;
+  }));
   suggestionRow.classList.toggle('hidden', !items.length);
 }
 
@@ -59,6 +63,7 @@ function chooseSuggestion(event) {
   const choice = event.target.closest('.suggestion');
   if (!choice) return;
   form.elements.location.value = choice.textContent;
+  settings.placeId = choice.dataset.placeId;
   showSuggestions([]);
   saveSettings();
 }
@@ -74,6 +79,10 @@ $UD.onConnected(() => {
 
   form.addEventListener('input', Utils.debounce(saveSettings));
   form.elements.location.addEventListener('input', Utils.debounce(requestSuggestions, SEARCH_DELAY_MS));
+  // Typed text is a new request, not the place chosen from the list.
+  form.elements.location.addEventListener('input', () => {
+    settings.placeId = '';
+  });
   form.elements.location.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') showSuggestions([]);
   });

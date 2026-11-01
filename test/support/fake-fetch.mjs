@@ -17,6 +17,6 @@ globalThis.fetch = async (input) => {
   if (key === 'BADKEY0000000000') return reply(401, { error: { code: 2006, message: 'API key is invalid.' } });
   if (q === 'nowhere') return reply(400, { error: { code: 1006, message: 'No matching location found.' } });
   if (q === 'offline') throw new TypeError('fetch failed');
-  if (url.pathname.endsWith('/search.json')) return reply(200, [{ name: 'São Paulo', region: 'Sao Paulo', country: 'Brazil' }]);
+  if (url.pathname.endsWith('/search.json')) return reply(200, [{ id: 290780, name: 'São Paulo', region: 'Sao Paulo', country: 'Brazil' }]);
   return reply(200, fixtures);
 };

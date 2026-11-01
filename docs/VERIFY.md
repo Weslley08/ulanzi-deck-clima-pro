@@ -38,6 +38,11 @@ This has never run on a real host, because the official simulator crashes on it.
 - [ ] The screen is kept after restarting Studio
 - [ ] The Screen selector in an open panel follows the press
 
+## Place
+
+- [ ] Typing a name shared by several places lists each one with its state
+- [ ] A place chosen from the list shows the same state in the panel after restarting Studio
+
 ## Updates
 
 The polling relies on `last_updated` moving in steps of about 15 minutes. That comes from WeatherAPI.com's "every 10-15 minute" and from saved replies, not from watching the live API.

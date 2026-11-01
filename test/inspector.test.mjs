@@ -297,7 +297,7 @@ test('too few letters do not spend an API call', options, async () => {
 });
 
 const suggestionsOpen = `!document.querySelector('#suggestionRow').classList.contains('hidden')`;
-const suggestionReply = (q, items) => fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'suggestions', q, items } });
+const suggestionReply = (q, labels) => fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'suggestions', q, items: labels.map((label, i) => ({ id: 290780 + i, label })) } });
 
 test('suggestions show as plain text that is readable against its background', options, async () => {
   assert.equal(await run(suggestionsOpen), false);
@@ -322,9 +322,26 @@ test('choosing a suggestion fills the place, saves it and closes the list', opti
   await run(`document.querySelector('.suggestion').click()`);
   const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
   assert.equal(saved.param.location, 'São Paulo, Brazil');
+  assert.equal(saved.param.placeId, '290780');
   assert.equal(await run(`document.querySelector('#location').value`), 'São Paulo, Brazil');
   assert.equal(await run(suggestionsOpen), false);
   assert.equal(await run(`getComputedStyle(document.querySelector('#suggestionRow')).display`), 'none');
+});
+
+test('changing another setting keeps the place chosen from the list', options, async () => {
+  messages = [];
+  await run(`document.querySelector('[name=theme][value=sky]').click()`);
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
+  assert.equal(saved.param.placeId, '290780');
+});
+
+test('a press on the key keeps the place chosen from the list', options, async () => {
+  fromHost({ cmd: 'paramfromplugin', param: { theme: 'sky', location: 'São Paulo, Brazil', placeId: '290780', screen: 'details', unit: 'f' } });
+  await until(`document.querySelector('#screen').value === 'details'`);
+  messages = [];
+  await run(`document.querySelector('[name=theme][value=neon]').click()`);
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
+  assert.equal(saved.param.placeId, '290780');
 });
 
 test('a reply with nothing to suggest leaves the list closed', options, async () => {
@@ -345,6 +362,13 @@ test('erasing down to too few letters closes the list', options, async () => {
   await until(suggestionsOpen);
   await type('#location', 'Sa');
   await until(`document.querySelector('#suggestionRow').classList.contains('hidden')`);
+});
+
+test('typing after choosing a place forgets its ID, so the new text is what gets asked for', options, async () => {
+  messages = [];
+  await type('#location', 'Rio');
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin' && m.param.location === 'Rio');
+  assert.equal(saved.param.placeId, '');
 });
 
 test('links open in the browser through the host, not inside the panel', options, async () => {

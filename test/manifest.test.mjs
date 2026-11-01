@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { THEME_IDS } from '../com.ulanzi.climapro.ulanziPlugin/plugin/render/themes/index.js';
-import { SCREENS, normalizeApiKey, normalizeSettings } from '../com.ulanzi.climapro.ulanziPlugin/plugin/settings.js';
+import { SCREENS, normalizeApiKey, normalizeSettings, placeQuery } from '../com.ulanzi.climapro.ulanziPlugin/plugin/settings.js';
 
 const pluginDir = fileURLToPath(new URL('../com.ulanzi.climapro.ulanziPlugin/', import.meta.url));
 const read = (path) => readFileSync(join(pluginDir, path), 'utf8');
@@ -131,7 +131,20 @@ test('every string marked in the inspector can be translated', () => {
 
 test('settings from an old version or a bad host value fall back to defaults', () => {
   const settings = normalizeSettings({ theme: 'gone', unit: 'k', screen: 'nope', location: 42 });
-  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', unit: 'c', screen: 'now' });
+  assert.deepEqual(settings, { theme: THEME_IDS[0], location: '42', placeId: '', unit: 'c', screen: 'now' });
+});
+
+test('a place chosen from the list is asked for by ID, and anything else by its text', () => {
+  assert.equal(placeQuery(normalizeSettings({ location: 'Jabaquara, Espirito Santo, Brazil', placeId: '277112' })), 'id:277112');
+  assert.equal(placeQuery(normalizeSettings({ location: 'Sao Paulo' })), 'Sao Paulo');
+  assert.equal(placeQuery(normalizeSettings({ location: '' })), '');
+});
+
+test('only a number counts as a place ID, so nothing else can reach the request', () => {
+  assert.equal(normalizeSettings({ placeId: 277112 }).placeId, '277112');
+  for (const placeId of ['', 'abc', '12&key=x', null, undefined, '1234567890123']) {
+    assert.equal(normalizeSettings({ placeId }).placeId, '', String(placeId));
+  }
 });
 
 test('a key saved by an older version with the settings since removed still loads', () => {

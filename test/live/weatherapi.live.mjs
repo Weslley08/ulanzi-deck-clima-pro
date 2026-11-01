@@ -40,5 +40,12 @@ test('a bad key reports the documented error', async () => {
 test('search returns suggestions', options, async () => {
   const items = await searchLocations(KEY, 'Sao Paulo');
   assert.ok(items.length >= 1);
-  assert.match(items[0], /Paulo/);
+  assert.match(items[0].label, /Paulo/);
+  assert.equal(typeof items[0].id, 'number');
+});
+
+test('a place from the search can be asked for by its ID', options, async () => {
+  const [{ id }] = await searchLocations(KEY, 'Sao Paulo');
+  const weather = await fetchCurrent(KEY, `id:${id}`);
+  assert.match(weather.location.name, /Paulo/);
 });
