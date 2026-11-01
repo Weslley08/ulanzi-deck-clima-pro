@@ -129,7 +129,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 
 Each of these is needed once, and a step that lacks a secret fails and names it.
 
-- **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge and creates the environment below. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
+- **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge, creates the environment below and removes CodeQL analyses left under an old workflow name. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
 - **`AUTOMATION_TOKEN`:** a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with read and write on **Contents** and **Pull requests**. A pull request opened with the workflow's own token leaves the Gate waiting for a click on "Approve workflows to run". Set it with `gh secret set AUTOMATION_TOKEN`, and again when it expires.
 - **`WEATHERAPI_KEY`:** a WeatherAPI.com key for the live tests, about 40 calls per validation. Set it with `gh secret set WEATHERAPI_KEY --env release-validation`. That environment only gives it to `release/v*` branches.
 
