@@ -4,7 +4,7 @@
 export const DEVELOP = 'develop';
 export const MAIN = 'main';
 
-/** Pushing a branch with one of these prefixes opens its pull request. Keep in step with open-pull-request.yml. */
+/** Pushing a branch with one of these prefixes opens its pull request. Keep in step with delivery.yml. */
 export const WORK_PREFIXES = ['feature', 'feat', 'fix', 'chore', 'docs', 'refactor', 'test', 'ci', 'build', 'perf'];
 const NEW_FEATURE_PREFIXES = new Set(['feature', 'feat']);
 

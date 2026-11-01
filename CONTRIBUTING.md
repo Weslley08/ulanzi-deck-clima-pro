@@ -105,9 +105,12 @@ node plugin/app.js 127.0.0.1 39069 en
 feature/*, fix/*, chore/*...  ->  develop  ->  release/vX.Y.Z  ->  main
 ```
 
-A person merges at each arrow, and the rest happens by itself. The **Branch flow** check refuses a pull request that skips a step.
+A person merges at each arrow, and the rest happens by itself, in two workflows:
 
-1. **Push a branch** named `feature/`, `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `build/` or `perf/`. Its pull request to `develop` opens by itself, unless you closed an earlier one. From a fork, open it by hand. The tests, coverage, zip, security checks, CodeQL and dependency review must pass.
+- **Gate** (`gate.yml`) decides whether a change may merge: the branch rules, workflow lint, tests, coverage, the zip, known vulnerabilities, CodeQL and dependency review. It also runs each week. Its **Branch flow** check refuses a pull request that skips a step, and the rest waits for that check.
+- **Delivery** (`delivery.yml`) moves the change along: it opens the pull requests, builds and validates a release, creates the draft and publishes it.
+
+1. **Push a branch** named `feature/`, `feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `build/` or `perf/`. Its pull request to `develop` opens by itself, unless you closed an earlier one. From a fork, open it by hand. The Gate must pass.
 2. **Merge into `develop`.** If the version there is already released, or too low for what merged, a `bump/` pull request raises it and merges itself: a new feature raises the second number, and anything else the third. Then a pull request from `develop` to `release/vX.Y.Z` opens, and later merges join it.
 3. **Merge into `release/vX.Y.Z`.** This is the approval, because GitHub does not let a person approve a pull request in their own name. The zip is built once and must start on Windows and macOS, the WeatherAPI.com and Defesa Civil tests run against the real services, and `npm run measure` runs. If all of that passes, a draft release gets the zip, its checksum and the numbers, and a pull request to `main` opens.
 4. **Test the draft's zip** with [docs/VERIFY.md](docs/VERIFY.md) and put the result under "Technical details" in the draft's notes. Replace the top of the notes with what changes for customers, because the Community Store shows them the whole text. Then tick both boxes in the pull request.
@@ -117,7 +120,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 
 - **A problem in the draft:** fix it in a new branch and go through `develop` again. The new merge into the release branch validates again, replaces the zip and the technical details, keeps the text you wrote above them, and clears the boxes. No tag has to move, because a draft has none yet.
 - **A problem after publishing:** the next version fixes it. A number is never reused, and an older version is never published after a newer one, because the Community Store orders by publish date and would show it as current.
-- **A release that stayed a draft after the merge:** the Publish job fails if the top of the notes was not written. Write it and run that job again.
+- **A release that stayed a draft after the merge:** the Delivery run fails if the top of the notes was not written. Write it and run that job again.
 - **Something that reached `main` directly:** a pull request from `main` to `develop` opens and merges itself, and asks for no new version.
 - **Merge commits only:** the repository allows no other kind, because the flow reads the merged branches from them and the release branch must end up inside `main`.
 - **Dependabot:** its security updates always open against `main`, whatever the configuration says, so change their base to `develop`.
@@ -127,7 +130,7 @@ A tag, its release and the plugin all carry the same number. `Version` in `manif
 Each of these is needed once, and a step that lacks a secret fails and names it.
 
 - **Settings:** `npm run setup:github` protects `develop`, `main` and `release/v*`, allows merge commits only, turns on auto-merge and creates the environment below. Add `-- --dry-run` to see the changes first. Run it again after renaming a required check.
-- **`AUTOMATION_TOKEN`:** a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with read and write on **Contents** and **Pull requests**. A pull request opened with the workflow's own token leaves CI waiting for a click on "Approve workflows to run". Set it with `gh secret set AUTOMATION_TOKEN`, and again when it expires.
+- **`AUTOMATION_TOKEN`:** a [fine-grained token](https://github.com/settings/personal-access-tokens/new) for this repository only, with read and write on **Contents** and **Pull requests**. A pull request opened with the workflow's own token leaves the Gate waiting for a click on "Approve workflows to run". Set it with `gh secret set AUTOMATION_TOKEN`, and again when it expires.
 - **`WEATHERAPI_KEY`:** a WeatherAPI.com key for the live tests, about 40 calls per validation. Set it with `gh secret set WEATHERAPI_KEY --env release-validation`. That environment only gives it to `release/v*` branches.
 
 ## Security
