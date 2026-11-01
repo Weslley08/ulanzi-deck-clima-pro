@@ -97,16 +97,19 @@ after(() => {
   rmSync(workDir, { recursive: true, force: true });
 });
 
-test('announces the plugin UUID and asks for the saved key', async () => {
+test('announces the plugin UUID, and waits for a key on the deck to ask for the saved API key', async () => {
   const connected = await waitFor((m) => m.cmd === 'connected');
   assert.equal(connected.uuid, PLUGIN_UUID);
-  await waitFor((m) => m.cmd === 'getGlobalSettings');
+  await sleep(QUIET_MS);
+  assert.equal(received.find((m) => m.cmd === 'getGlobalSettings'), undefined);
 });
 
 test('with no key saved, a new key asks for one instead of calling the API', async () => {
   send({ cmd: 'didReceiveGlobalSettings', uuid: PLUGIN_UUID, key: '', actionid: '', settings: {} });
   await sleep(50);
   send({ cmd: 'add', ...keyMessage('0_0', 'a1', { param: {} }) });
+  const ask = await waitFor((m) => m.cmd === 'getGlobalSettings');
+  assert.deepEqual([ask.uuid, ask.key, ask.actionid], [ACTION_UUID, '0_0', 'a1']);
   const face = await waitFor(iconFor('0_0'));
   assert.match(iconOf(face), /^data:image\/png;base64,/);
   assert.equal(requests().length, 0);
@@ -256,6 +259,8 @@ test('after losing the host it reconnects on the same port and redraws, in the s
   received = [];
   socket.terminate();
   await waitFor((m) => m.cmd === 'connected');
+  const ask = await waitFor((m) => m.cmd === 'getGlobalSettings');
+  assert.ok(ask.key && ask.actionid, 'the SDK requires a context from the main service');
   await waitFor(iconFor('0_0'));
   assert.equal(plugin.exitCode, null);
   send({ cmd: 'sendToPlugin', ...keyMessage('2_0', 'a3', { payload: { type: 'hello' } }) });

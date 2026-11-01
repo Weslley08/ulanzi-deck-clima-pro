@@ -33,12 +33,24 @@ const hub = new WeatherHub({
 });
 const keys = new Map();
 
+/** The SDK says the main service must pass a context here, so this has to wait for a key on the deck. */
+function askForApiKey(context) {
+  $UD.getGlobalSettings(context);
+  // Without an answer the keys would sit on "loading" forever instead of asking for a key.
+  setTimeout(() => {
+    if (hub.keyState !== 'unknown') return;
+    report('Studio did not answer about the saved API key');
+    hub.setApiKey('');
+  }, GLOBAL_SETTINGS_WAIT_MS);
+}
+
 function keyFor(jsn) {
   let key = keys.get(jsn.context);
   if (!key && jsn.uuid === ACTION_UUID) {
     key = new WeatherKey(jsn.context, { host: $UD, hub, version: VERSION });
     keys.set(jsn.context, key);
     key.updateSettings(jsn.param ?? {});
+    if (hub.keyState !== 'ready') askForApiKey(jsn.context);
   }
   return key;
 }
@@ -79,11 +91,9 @@ function reconnect() {
 $UD.onConnected(async () => {
   attempts = 0;
   report('connected to Studio');
-  $UD.getGlobalSettings();
-  // Without an answer the keys would sit on "loading" forever instead of asking for a key.
-  setTimeout(() => {
-    if (hub.keyState === 'unknown') hub.setApiKey('');
-  }, GLOBAL_SETTINGS_WAIT_MS);
+  // After a reconnection the key may have changed. On a first connection the keys are still to come.
+  const [firstKey] = keys.keys();
+  if (firstKey) askForApiKey(firstKey);
   await $UD.localizeUI();
   for (const key of keys.values()) key.redraw();
 });
@@ -92,7 +102,9 @@ $UD.onClose(reconnect);
 $UD.onError(() => {});
 
 $UD.onDidReceiveGlobalSettings((jsn) => {
-  hub.setApiKey(normalizeApiKey(jsn.settings?.apiKey));
+  const apiKey = normalizeApiKey(jsn.settings?.apiKey);
+  report(apiKey ? 'Studio sent a saved API key' : 'Studio has no API key saved');
+  hub.setApiKey(apiKey);
 });
 
 $UD.onAdd(applySettings);

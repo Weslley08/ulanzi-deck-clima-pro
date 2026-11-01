@@ -18,6 +18,7 @@ Run everything on Node 20.12.2 (`.nvmrc`), the version Studio runs plugins on. `
 ## Things that are easy to break
 
 - The API key may only appear in `weather-api.js` URLs. Never log it, never put it in per-key settings. `host.js` exists because the SDK logs every message. `report()` in `app.js` is the only output that reaches Studio's log, so never pass it settings or URLs.
+- The main service must pass a key's context to `getGlobalSettings`, as the SDK says. The panel does not need one, so a panel that shows the saved key does not prove the plugin got it.
 - `libs/` and `plugin/ulanzi-api/` are verbatim SDK copies pinned in `sdk-lock.json`. Extend in `host.js`; do not edit them.
 - Key images must be full data URIs. Devices silently ignore bare base64, and Studio's preview hides the bug.
 - Handle only `run` for presses: the D200H fires `keydown` and `run` for one touch.
@@ -26,4 +27,4 @@ Run everything on Node 20.12.2 (`.nvmrc`), the version Studio runs plugins on. `
 
 ## What has not been verified
 
-On 2026-11-01 the maintainer got it working in the real Ulanzi Studio (Node 20.12.2) with a key, after clearing its saved settings. Before that it stopped with `exitCode=0`, and the cause was not found; the `[Clima Pro]` lines in Studio's log now say why it stops. The full checklist has not been run. `docs/VERIFY.md` is the checklist for the first real run. `npm run test:live` and `npm run watch:updates` need a key. The 15 minute step in `last_updated` comes from WeatherAPI.com's "every 10-15 minute" and 97 saved replies in public repositories, not from watching the live API.
+On 2026-11-01 the maintainer got it working in the real Ulanzi Studio (Node 20.12.2) with a key, but after each update had to erase and retype the key. The cause is probably `getGlobalSettings` sent without a context, fixed in 1.3.0 but not yet seen working in Studio. An earlier stop with `exitCode=0` was never explained; the `[Clima Pro]` lines in Studio's log now say why it stops and what Studio answered about the key. The full checklist has not been run. `docs/VERIFY.md` is the checklist for the first real run. `npm run test:live` and `npm run watch:updates` need a key. The 15 minute step in `last_updated` comes from WeatherAPI.com's "every 10-15 minute" and 97 saved replies in public repositories, not from watching the live API.

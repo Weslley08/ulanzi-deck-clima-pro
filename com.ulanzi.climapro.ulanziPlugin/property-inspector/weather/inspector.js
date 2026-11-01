@@ -16,6 +16,7 @@ const versionLine = document.querySelector('#version');
 
 let settings = { ...DEFAULTS };
 let lastStatus = { state: 'loading' };
+let keyResent = false;
 
 $UD.connect();
 
@@ -40,6 +41,16 @@ function saveApiKey() {
     return;
   }
   showStatus({ state: apiKey ? 'loading' : 'missing' });
+  $UD.setGlobalSettings({ apiKey });
+}
+
+// If this panel has the saved key and the plugin does not, saving it again forwards it to the plugin.
+// Only once per panel, so a host that echoes the save cannot start a loop.
+function resendSavedKey() {
+  const apiKey = apiKeyInput.value.trim();
+  if (keyResent || lastStatus.state !== 'missing' || !API_KEY_FORMAT.test(apiKey)) return;
+  keyResent = true;
+  showStatus({ state: 'loading' });
   $UD.setGlobalSettings({ apiKey });
 }
 
@@ -111,11 +122,15 @@ $UD.onParamFromPlugin(loadSettings);
 $UD.onDidReceiveGlobalSettings((jsn) => {
   // Never overwrite what the user is typing.
   if (document.activeElement !== apiKeyInput) apiKeyInput.value = jsn.settings?.apiKey ?? '';
+  resendSavedKey();
 });
 
 $UD.onSendToPropertyInspector((jsn) => {
   const message = jsn.payload;
-  if (message?.type === 'status') showStatus(message);
+  if (message?.type === 'status') {
+    showStatus(message);
+    resendSavedKey();
+  }
   // A slow reply must not reopen the list after the text has changed or a place was chosen.
   if (message?.type === 'suggestions' && message.q === form.elements.location.value.trim()) showSuggestions(message.items ?? []);
   if (message?.type === 'about') versionLine.textContent = `Clima Pro v${message.version}`;

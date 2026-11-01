@@ -15,12 +15,13 @@ Setup: run `npm run package`, unzip the result into the plugins folder (`%APPDAT
 
 ## API key (global settings)
 
-This has never run on a real host, because the official simulator crashes on it.
+An earlier version lost the saved key at each start. Studio's log now has one of these lines, which never include the key: `Studio sent a saved API key`, `Studio has no API key saved` or `Studio did not answer about the saved API key`.
 
 - [ ] Pasting a valid key shows "Connected" with the place, and the device shows the weather
 - [ ] A wrong key shows the rejection in the panel and "Check your API key" on the device
 - [ ] A second key on the deck already has the API key filled in
-- [ ] After closing and reopening Studio, the key is still saved and the weather returns by itself
+- [ ] After closing and reopening Studio, the key is still saved and the weather returns by itself, without opening the panel
+- [ ] After installing a new version over an old one, the weather returns by itself, without opening the panel
 - [ ] After exporting a profile, the API key is not in the exported file
 
 ## Display

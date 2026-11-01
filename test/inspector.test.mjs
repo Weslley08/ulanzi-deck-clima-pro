@@ -217,6 +217,18 @@ test('the saved key fills its field, hidden', options, async () => {
   assert.equal(await run(`document.querySelector('#apiKey').type`), 'password');
 });
 
+test('if the plugin has no key but the panel does, the panel sends it again, only once', options, async () => {
+  messages = [];
+  fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'status', state: 'missing' } });
+  const saved = await waitForMessage((m) => m.cmd === 'setGlobalSettings');
+  assert.deepEqual(saved.settings, { apiKey: SAVED_KEY });
+  messages = [];
+  fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'status', state: 'missing' } });
+  fromHost({ cmd: 'didReceiveGlobalSettings', settings: { apiKey: SAVED_KEY } });
+  await sleep(100);
+  assert.equal(messages.find((m) => m.cmd === 'setGlobalSettings'), undefined);
+});
+
 test('the version from the plugin shows up', options, async () => {
   fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'about', version: '1.2.3' } });
   await until(`document.querySelector('#version').textContent === 'Clima Pro v1.2.3'`);
