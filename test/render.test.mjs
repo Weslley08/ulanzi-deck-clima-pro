@@ -82,10 +82,6 @@ test('negative temperatures use a real minus sign', () => {
   assert.equal(sampleView('sky', 'now', { tempC: -6 }).temp, '−6°');
 });
 
-test('a custom name replaces the place from the API', () => {
-  assert.equal(sampleView('sky', 'now', {}, { label: 'Casa' }).city, 'Casa');
-});
-
 test('precipitation keeps the fractions that matter, in the chosen unit', () => {
   assert.equal(sampleView('sky', 'details', { precipMm: 0.4 }).precip, '0.4');
   assert.equal(sampleView('sky', 'details', { precipMm: 0.4 }).precipUnit, 'mm');

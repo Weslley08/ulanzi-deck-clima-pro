@@ -2,7 +2,7 @@
 for (const method of ['log', 'info', 'debug', 'warn', 'error']) console[method] = () => {};
 
 const API_KEY_FORMAT = /^[A-Za-z0-9]{10,64}$/;
-const DEFAULTS = { theme: 'sky', location: '', label: '', unit: 'c', screen: 'now' };
+const DEFAULTS = { theme: 'sky', location: '', unit: 'c', screen: 'now' };
 const MIN_SEARCH_LENGTH = 3;
 const SEARCH_DELAY_MS = 500;
 const LINKS = { getKey: 'https://www.weatherapi.com/signup', attribution: 'https://www.weatherapi.com/' };
@@ -11,6 +11,7 @@ const form = document.querySelector('#property-inspector');
 const apiKeyInput = document.querySelector('#apiKey');
 const statusLine = document.querySelector('#status');
 const suggestions = document.querySelector('#suggestions');
+const suggestionRow = document.querySelector('#suggestionRow');
 const versionLine = document.querySelector('#version');
 
 let settings = { ...DEFAULTS };
@@ -45,10 +46,21 @@ function saveApiKey() {
 function requestSuggestions() {
   const q = form.elements.location.value.trim();
   if (q.length >= MIN_SEARCH_LENGTH) $UD.sendToPlugin({ type: 'search', q });
+  else showSuggestions([]);
 }
 
 function showSuggestions(items) {
-  suggestions.replaceChildren(...items.map((value) => Object.assign(document.createElement('option'), { value })));
+  // Place names come from a remote API: textContent keeps them from being read as markup.
+  suggestions.replaceChildren(...items.map((textContent) => Object.assign(document.createElement('button'), { type: 'button', className: 'suggestion', textContent })));
+  suggestionRow.classList.toggle('hidden', !items.length);
+}
+
+function chooseSuggestion(event) {
+  const choice = event.target.closest('.suggestion');
+  if (!choice) return;
+  form.elements.location.value = choice.textContent;
+  showSuggestions([]);
+  saveSettings();
 }
 
 $UD.onConnected(() => {
@@ -62,6 +74,10 @@ $UD.onConnected(() => {
 
   form.addEventListener('input', Utils.debounce(saveSettings));
   form.elements.location.addEventListener('input', Utils.debounce(requestSuggestions, SEARCH_DELAY_MS));
+  form.elements.location.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') showSuggestions([]);
+  });
+  suggestions.addEventListener('click', chooseSuggestion);
   apiKeyInput.addEventListener('input', Utils.debounce(saveApiKey, SEARCH_DELAY_MS));
 
   // The host opens links in the user's browser; navigating here would replace the panel.
@@ -91,7 +107,8 @@ $UD.onDidReceiveGlobalSettings((jsn) => {
 $UD.onSendToPropertyInspector((jsn) => {
   const message = jsn.payload;
   if (message?.type === 'status') showStatus(message);
-  if (message?.type === 'suggestions') showSuggestions(message.items ?? []);
+  // A slow reply must not reopen the list after the text has changed or a place was chosen.
+  if (message?.type === 'suggestions' && message.q === form.elements.location.value.trim()) showSuggestions(message.items ?? []);
   if (message?.type === 'about') versionLine.textContent = `Clima Pro v${message.version}`;
 });
 

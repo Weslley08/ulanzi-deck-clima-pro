@@ -2,7 +2,7 @@
 
 Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi Studio](https://www.ulanzi.com/pages/ulanzi-app), for the keys of the D200, D200H and D200X.
 
-**Status:** not released yet. It passes its automated tests, but has not run in the real Ulanzi Studio, on a device, or against the live API with a valid key. [docs/VERIFY.md](docs/VERIFY.md) lists what is still to be checked.
+**Status:** not released yet. It has run in the real Ulanzi Studio with a valid key, but the full checklist in [docs/VERIFY.md](docs/VERIFY.md) has not been completed.
 
 ![Six themes, each with current conditions, details and setup screens](docs/themes.png)
 
@@ -14,7 +14,7 @@ Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi 
 
 ## Setup
 
-1. Install Clima Pro from the Ulanzi Studio marketplace, or download the zip from [Releases](https://github.com/Weslley08/ulanzi-deck-clima-pro/releases) and unzip it into the plugins folder:
+1. Install Clima Pro from the Ulanzi Studio marketplace, or download `com.ulanzi.climapro.ulanziPlugin.zip` from [Releases](https://github.com/Weslley08/ulanzi-deck-clima-pro/releases) and unzip it into the plugins folder. The **Source code** archives on that page do not include the dependencies, so the plugin will not start from them.
    - Windows: `%APPDATA%\Ulanzi\UlanziDeck\Plugins\`
    - macOS: `~/Library/Application Support/Ulanzi/UlanziDeck/Plugins/`
 
@@ -23,7 +23,7 @@ Live weather on your Ulanzi deck, in the theme you choose. A plugin for [Ulanzi 
 3. Drag **Weather** onto a key and paste your key into the settings panel. You only do this once.
 4. Type a place, or leave it empty to detect it from your IP. Pick a theme.
 
-The panel and the messages on the key are available in English, Portuguese, Spanish and German. Keys draw the Latin alphabet only, so other scripts in a custom key name are left out.
+The panel and the messages on the key are available in English, Portuguese, Spanish and German. Keys draw the Latin alphabet only, so other scripts in a place name are left out. To put your own name on a key, use the title field in Ulanzi Studio.
 
 ## What the key shows
 

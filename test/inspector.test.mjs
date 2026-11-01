@@ -196,16 +196,19 @@ test('the panel appears in the host language', options, async () => {
 });
 
 test('saved settings fill the form', options, async () => {
-  fromHost({ cmd: 'paramfromapp', param: { theme: 'neon', location: 'Rio de Janeiro', label: 'Casa', screen: 'details', unit: 'f' } });
+  fromHost({ cmd: 'paramfromapp', param: { theme: 'neon', location: 'Rio de Janeiro', screen: 'details', unit: 'f' } });
   await until(`document.querySelector('[name=theme]:checked').value === 'neon'`);
   assert.equal(await run(`document.querySelector('#location').value`), 'Rio de Janeiro');
-  assert.equal(await run(`document.querySelector('#label').value`), 'Casa');
   assert.equal(await run(`document.querySelector('#screen').value`), 'details');
   assert.equal(await run(`document.querySelector('#unit').value`), 'f');
 });
 
 test('the panel offers no choice of how often to update', options, async () => {
   assert.equal(await run(`document.querySelector('#refresh')`), null);
+});
+
+test('the panel leaves the name on the key to the title field in Studio', options, async () => {
+  assert.equal(await run(`document.querySelector('#label')`), null);
 });
 
 test('the saved key fills its field, hidden', options, async () => {
@@ -273,7 +276,7 @@ test('choosing a theme saves on the spot, with every other setting intact and no
 });
 
 test('a press on the key updates the panel', options, async () => {
-  fromHost({ cmd: 'paramfromplugin', param: { theme: 'lcd', location: 'Rio de Janeiro', label: 'Casa', screen: 'now', unit: 'f' } });
+  fromHost({ cmd: 'paramfromplugin', param: { theme: 'lcd', location: 'Rio de Janeiro', screen: 'now', unit: 'f' } });
   await until(`document.querySelector('#screen').value === 'now'`);
 });
 
@@ -293,11 +296,55 @@ test('too few letters do not spend an API call', options, async () => {
   assert.equal(messages.find((m) => m.cmd === 'sendToPlugin'), undefined);
 });
 
-test('suggestions fill the list as plain options', options, async () => {
-  fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'suggestions', items: ['São Paulo, Brazil', '<b>x</b>'] } });
-  await until(`document.querySelectorAll('#suggestions option').length === 2`);
-  assert.equal(await run(`document.querySelector('#suggestions option').value`), 'São Paulo, Brazil');
+const suggestionsOpen = `!document.querySelector('#suggestionRow').classList.contains('hidden')`;
+const suggestionReply = (q, items) => fromHost({ cmd: 'sendToPropertyInspector', payload: { type: 'suggestions', q, items } });
+
+test('suggestions show as plain text that is readable against its background', options, async () => {
+  assert.equal(await run(suggestionsOpen), false);
+  suggestionReply('Sa', ['São Paulo, Brazil', '<b>x</b>']);
+  await until(`document.querySelectorAll('.suggestion').length === 2`);
+  assert.equal(await run(`getComputedStyle(document.querySelector('#suggestionRow')).display`), 'flex');
+  assert.equal(await run(`document.querySelector('.suggestion').textContent`), 'São Paulo, Brazil');
   assert.equal(await run(`document.querySelector('#suggestions b')`), null);
+  assert.equal(await run(`getComputedStyle(document.querySelector('.suggestion')).color`), 'rgb(255, 255, 255)');
+  assert.equal(await run(`getComputedStyle(document.querySelector('.suggestion')).backgroundColor`), 'rgb(24, 25, 27)');
+  await screenshot('panel-suggestions');
+});
+
+test('a reply for text that has since changed is ignored', options, async () => {
+  suggestionReply('Something else', ['Something else, Nowhere']);
+  await sleep(100);
+  assert.equal(await run(`document.querySelector('.suggestion').textContent`), 'São Paulo, Brazil');
+});
+
+test('choosing a suggestion fills the place, saves it and closes the list', options, async () => {
+  messages = [];
+  await run(`document.querySelector('.suggestion').click()`);
+  const saved = await waitForMessage((m) => m.cmd === 'paramfromplugin');
+  assert.equal(saved.param.location, 'São Paulo, Brazil');
+  assert.equal(await run(`document.querySelector('#location').value`), 'São Paulo, Brazil');
+  assert.equal(await run(suggestionsOpen), false);
+  assert.equal(await run(`getComputedStyle(document.querySelector('#suggestionRow')).display`), 'none');
+});
+
+test('a reply with nothing to suggest leaves the list closed', options, async () => {
+  suggestionReply('São Paulo, Brazil', []);
+  await sleep(100);
+  assert.equal(await run(suggestionsOpen), false);
+});
+
+test('Escape closes the list', options, async () => {
+  suggestionReply('São Paulo, Brazil', ['São Paulo, Brazil']);
+  await until(suggestionsOpen);
+  await run(`document.querySelector('#location').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  assert.equal(await run(suggestionsOpen), false);
+});
+
+test('erasing down to too few letters closes the list', options, async () => {
+  suggestionReply('São Paulo, Brazil', ['São Paulo, Brazil']);
+  await until(suggestionsOpen);
+  await type('#location', 'Sa');
+  await until(`document.querySelector('#suggestionRow').classList.contains('hidden')`);
 });
 
 test('links open in the browser through the host, not inside the panel', options, async () => {

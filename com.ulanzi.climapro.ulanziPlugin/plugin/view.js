@@ -23,7 +23,7 @@ export function buildWeatherView(weather, settings, screen, stale = false) {
     screen,
     condition: current.condition,
     isDay: current.isDay,
-    city: settings.label || location.name,
+    city: location.name,
     unit: fahrenheit ? 'f' : 'c',
     celsius: round(current.tempC),
     temp: degrees(temp),

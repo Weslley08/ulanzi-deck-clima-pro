@@ -15,6 +15,27 @@
   overflow-wrap: anywhere;
 }
 
+.suggestion {
+  display: block;
+  width: 100%;
+  max-width: var(--uspi-width);
+  padding: 6px 8px;
+  font-size: 12px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  color: var(--uspi-textcolor);
+  background: var(--uspi-inputbg);
+  border: 1px solid var(--uspi-bordercolor);
+  border-radius: var(--uspi-borderradius);
+  cursor: pointer;
+}
+
+.suggestion:hover,
+.suggestion:focus-visible {
+  border-color: var(--uspi-theme);
+  outline: none;
+}
+
 .theme-row {
   align-items: flex-start;
 }

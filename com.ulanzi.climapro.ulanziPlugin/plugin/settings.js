@@ -13,7 +13,6 @@ export function normalizeSettings(raw = {}) {
   return {
     theme: oneOf(raw.theme, THEME_IDS, DEFAULT_THEME),
     location: cleanText(raw.location),
-    label: cleanText(raw.label),
     unit: oneOf(raw.unit, ['c', 'f'], 'c'),
     screen: oneOf(raw.screen, SCREENS, SCREENS[0]),
   };
