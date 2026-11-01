@@ -40,6 +40,7 @@ body:
     id: plugin
     attributes:
       label: Clima Pro version
+      description: Shown at the bottom of the key's settings panel.
       placeholder: "1.0.0"
     validations:
       required: true

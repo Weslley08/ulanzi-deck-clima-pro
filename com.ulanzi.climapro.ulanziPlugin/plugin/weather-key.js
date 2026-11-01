@@ -23,10 +23,11 @@ export class WeatherKey {
   #lastStatus = null;
   #lastSearch = '';
 
-  constructor(context, { host, hub, render = renderFace, search = searchLocations }) {
+  constructor(context, { host, hub, version, render = renderFace, search = searchLocations }) {
     this.context = context;
     this.host = host;
     this.hub = hub;
+    this.version = version;
     this.renderImage = render;
     this.search = search;
   }
@@ -130,6 +131,7 @@ export class WeatherKey {
   async onInspectorMessage(payload) {
     if (payload?.type === 'hello') {
       this.pushStatus(true);
+      this.host.sendToPropertyInspector({ type: 'about', version: this.version }, this.context);
       return;
     }
     if (payload?.type !== 'search') return;

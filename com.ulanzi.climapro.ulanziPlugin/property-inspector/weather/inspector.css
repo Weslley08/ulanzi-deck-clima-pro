@@ -68,3 +68,9 @@
   line-height: 15px;
   color: var(--uspi-unitcolor);
 }
+
+.version {
+  margin: 0 16px 12px;
+  font-size: 11px;
+  color: var(--uspi-unitcolor);
+}

@@ -11,6 +11,7 @@ const form = document.querySelector('#property-inspector');
 const apiKeyInput = document.querySelector('#apiKey');
 const statusLine = document.querySelector('#status');
 const suggestions = document.querySelector('#suggestions');
+const versionLine = document.querySelector('#version');
 
 let settings = { ...DEFAULTS };
 let lastStatus = { state: 'loading' };
@@ -91,6 +92,7 @@ $UD.onSendToPropertyInspector((jsn) => {
   const message = jsn.payload;
   if (message?.type === 'status') showStatus(message);
   if (message?.type === 'suggestions') showSuggestions(message.items ?? []);
+  if (message?.type === 'about') versionLine.textContent = `Clima Pro v${message.version}`;
 });
 
 showStatus(lastStatus);
