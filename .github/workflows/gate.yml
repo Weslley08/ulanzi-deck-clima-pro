@@ -38,6 +38,10 @@ jobs:
           PR_HEAD: ${{ github.head_ref }}
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Reading a draft takes write access. A fork gets no secret, and this job runs no npm.
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
   # Each job below waits for the rules, so a wrong base or an unticked box does not run everything for nothing.
   # A skipped job does not hide a failure: the rules are red in that same run, and they block the merge.
@@ -140,6 +144,8 @@ jobs:
       - run: npm run package
       - run: npm run check:secrets
 
+  # CodeQL names its analyses after this file and job. After renaming either, update setup-github.mjs and run it:
+  # while the old name lasts, the CodeQL check on pull requests goes neutral, and new alerts do not block them.
   analyze:
     needs: rules
     if: ${{ !failure() && !cancelled() }}
