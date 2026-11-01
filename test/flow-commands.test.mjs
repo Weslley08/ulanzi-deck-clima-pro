@@ -400,8 +400,58 @@ function mergedRelease() {
   const validated = git('rev-parse', 'HEAD');
   git('switch', '--quiet', 'main');
   git('merge', '--no-ff', 'develop', '-m', `Merge pull request #9 from owner/release/v${version}`);
+  onOrigin('branch', `release/v${version}`, 'main');
   return { version, validated };
 }
+
+const RELEASE_PR = (version) => ({ PR_BASE: 'main', PR_HEAD: `release/v${version}`, PR_HEAD_REPO: 'owner/repo', PR_HEAD_SHA: 'abc123', PR_BODY: '- [x] Ran docs/VERIFY.md on a device' });
+
+function checkReleasePr(replies, env = {}) {
+  const version = currentVersion();
+  return flow('check-pull-request', { env: { ...RELEASE_PR(version), ...env }, replies: replies(version) });
+}
+
+test('the merge into main waits for the notes, so it can never leave main ahead of a draft', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'abc123', body: 'WRITE THIS FOR CUSTOMERS.' }]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /Write the top of the notes/);
+});
+
+test('the merge into main waits for a draft to exist', () => {
+  const { status, stderr } = checkReleasePr(() => [['release list', []]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /There is no draft/);
+});
+
+test('the merge into main waits for a draft of the end of the branch, after a newer merge', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'older', body: WRITTEN }]]);
+  assert.equal(status, 1);
+  assert.match(stderr, /holds older/);
+});
+
+test('with the notes written and the draft up to date, the merge into main may go ahead', () => {
+  const { status, stderr } = checkReleasePr((version) => [['release list', [{ tagName: `v${version}`, isDraft: true }]], ['release view', { targetCommitish: 'abc123', body: WRITTEN }]]);
+  assert.equal(status, 0, stderr);
+});
+
+test('the draft is not read for a pull request to develop or from a fork, which has no token', () => {
+  const version = currentVersion();
+  const toDevelop = flow('check-pull-request', { env: { ...RELEASE_PR(version), PR_BASE: 'develop', PR_HEAD: 'fix/x' } });
+  assert.equal(toDevelop.status, 0);
+  assert.equal(callsTo(toDevelop.calls, 'release').length, 0);
+  assert.equal(flow('check-pull-request', { env: { ...RELEASE_PR(version), GH_TOKEN: '' } }).status, 0);
+});
+
+test('a release published by hand gets its branch removed and latest moved on the next run', () => {
+  const version = currentVersion();
+  onOrigin('branch', `release/v${version}`, 'main');
+  onOrigin('branch', 'latest', 'main');
+  const { status, calls } = flow('publish');
+  assert.equal(status, 0);
+  assert.equal(callsTo(calls, 'release').length, 0);
+  assert.equal(callsTo(calls, 'api', '-X', 'DELETE')[0][3], `repos/{owner}/{repo}/git/refs/heads/release/v${version}`);
+  assert.equal(callsTo(calls, 'api', '-X', 'PATCH')[0][3], 'repos/{owner}/{repo}/git/refs/heads/latest');
+});
 
 test('notes still to write keep the release a draft, because customers read them, and the job can run again', () => {
   const { version, validated } = mergedRelease();
