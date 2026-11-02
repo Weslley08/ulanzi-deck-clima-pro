@@ -1,0 +1,24 @@
+{
+  "name": "Clima Pro",
+  "pluginFolder": "com.ulanzi.climapro.ulanziPlugin",
+  "merging": "It cannot be taken back: from then on it is what people download, and the community store reads it by itself.",
+  "validation": {
+    "steps": [
+      "The zip is built once, and it must start and draw a key on Windows and macOS",
+      "The WeatherAPI.com and Defesa Civil tests run against the real services",
+      "`npm run measure` runs"
+    ],
+    "done": [
+      "Tests, coverage and the security checks",
+      "The zip started and drew a key on Windows and macOS",
+      "The WeatherAPI.com and Defesa Civil tests, against the real services"
+    ]
+  },
+  "notes": {
+    "install": "Download `{zip}`, not the **Source code** archives, which will not start, and follow the [setup steps]({blob}/README.md#setup). You need a free [WeatherAPI.com key](https://www.weatherapi.com/signup).",
+    "aboutHeading": "Data sources",
+    "about": "Weather data by [WeatherAPI.com](https://www.weatherapi.com/). It is for general information only and should not be the sole basis for safety-critical decisions. The full disclaimer is in the settings panel and the [README]({blob}/README.md#weather-data). Alerts come from the public IDAP feed of Brazil's Defesa Civil. This project is not affiliated with Ulanzi, WeatherAPI.com or the Defesa Civil.",
+    "checks": "The automated checks passed on Windows, macOS and Linux, and found no known vulnerabilities in the dependencies and no secret patterns. These tools only find problems that are already known. This zip started on Windows and macOS against a fake host, and the WeatherAPI.com and Defesa Civil tests ran against the real services.",
+    "measuredAgainst": "a fake host and a synthetic feed"
+  }
+}

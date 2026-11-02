@@ -24,7 +24,6 @@
     "check:sdk": "node scripts/check-sdk.mjs",
     "measure": "node scripts/measure.mjs",
     "bump": "node scripts/bump-version.mjs",
-    "setup:github": "node scripts/setup-github.mjs",
     "audit": "npm audit && npm audit --prefix com.ulanzi.climapro.ulanziPlugin"
   },
   "devDependencies": {
