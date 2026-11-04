@@ -31,7 +31,7 @@
     "@fontsource/orbitron": "5.3.0",
     "@fontsource/outfit": "5.3.0",
     "@fontsource/vt323": "5.3.0",
-    "@types/node": "20.12.14",
+    "@types/node": "26.6.6",
     "opentype.js": "2.0.0",
     "typescript": "5.9.3",
     "ws": "8.22.1"
