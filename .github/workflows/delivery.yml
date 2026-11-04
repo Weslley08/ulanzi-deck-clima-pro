@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   delivery:
-    uses: Weslley08/ulanzi-plugin-pipeline/.github/workflows/delivery.yml@v1
+    uses: Weslley08/ulanzi-plugin-pipeline/.github/workflows/delivery.yml@feat/maintainer-approval
     with:
       # The environment gives the key to release/v* branches only, so no other branch's workflow can read it.
       integrations-scripts: test:live test:live:alerts
